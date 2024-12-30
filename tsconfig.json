@@ -1,0 +1,26 @@
+{
+  "include": ["*.ts", "routes/*.ts"],
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": false,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strict": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "types": ["node"],
+    "incremental": true
+  }
+}
