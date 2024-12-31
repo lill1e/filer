@@ -2,12 +2,23 @@ import express from "express"
 import multer from "multer"
 import ffmpeg from "ffmpeg"
 import * as dotenv from "dotenv"
+import { Client } from "pg"
 
 const app = express()
 dotenv.config()
 const upload = multer({
     dest: "uploads/"
 })
+const db = new Client({
+    host: process.env.DATABASE_HOST || "localhost",
+    port: parseInt(process.env.DATABASE_PORT || "5432"),
+    user: process.env.DATABASE_USER || "postgres",
+    password: process.env.DATABASE_PASSWORD || "postgres",
+    database: process.env.DATABASE_NAME || "mydatabase",
+})
+
+db.connect()
+    .catch(e => console.log(`There was a problem connecting to the database: ${e}`))
 
 app.use(express.json())
 
