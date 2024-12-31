@@ -27,7 +27,7 @@ function getFileName(fileName: string): string | null {
     if (!match || match.length != 8) {
         return null
     } else {
-        return match.slice(0, 3).join(".") + "-" + match.slice(3, 6).join(".") + match[6]
+        return match.slice(0, 3).join(".") + "-" + match.slice(3, 7).join(".") + match[7]
     }
 }
 
