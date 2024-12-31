@@ -1,3 +1,17 @@
+use serde_derive::Deserialize;
+use std::env;
+use ureq_multipart::MultipartRequest;
+
+#[derive(Debug, Deserialize)]
+struct UploadResult {
+    file: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct UploadError {
+    message: String,
+}
+
 fn main() {
     let path = "example.mp4";
     println!("Hello, world!");
