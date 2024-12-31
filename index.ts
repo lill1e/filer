@@ -12,11 +12,11 @@ const upload = multer({
 app.use(express.json())
 
 function getFileName(fileName: string): string | null {
-    const match = fileName.substring(0, fileName.length - 1).match(new RegExp("([0-9])+", "g"))
-    if (!match || match.length != 7) {
+    const match = fileName.match(new RegExp("([0-9])+|.mp4", "g"))
+    if (!match || match.length != 8) {
         return null
     } else {
-        return match.slice(0, 3).join(".") + "-" + match.slice(3).join(".") + ".mp4"
+        return match.slice(0, 3).join(".") + "-" + match.slice(3, 6).join(".") + match[6]
     }
 }
 
