@@ -29,7 +29,7 @@ app.post("/test", upload.single("file"), (req, res) => {
     new ffmpeg(req.file.path)
         .then(video => {
             video.addCommand("-vf", "crop=2134:1200:853:0")
-            video.save(__dirname + "/processed/" + fileName)
+            video.save("processed/" + fileName)
         })
         .then(_ => res.json({ file: req.file?.originalname }))
         .catch(e => res.status(403).json({ message: "There was an error uploading your file", error: e.msg }))
