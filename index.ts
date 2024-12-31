@@ -1,8 +1,10 @@
 import express from "express"
 import multer from "multer"
 import ffmpeg from "ffmpeg"
+import * as dotenv from "dotenv"
 
 const app = express()
+dotenv.config()
 const upload = multer({
     dest: "uploads/"
 })
