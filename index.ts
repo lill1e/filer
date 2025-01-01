@@ -38,17 +38,40 @@ app.post("/test", upload.single("file"), (req, res) => {
     }
     let fileName = getFileName(req.file.originalname) || (req.file.filename + ".mp4")
     new ffmpeg(req.file.path)
-        .then(video => {
+        .then(async video => {
             if (process.env.CROP_ENABLED == "true") {
                 const cropSourceWidth = process.env.CROP_SOURCE_WIDTH || "1920"
                 const cropWidth = process.env.CROP_WIDTH || "1920"
                 const cropHeight = process.env.CROP_HEIGHT || "1080"
                 video.addCommand("-vf", `crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
-            video.save("processed/" + fileName)
-            return video.save("processed/" + fileName)
+            res.json({ file: req.file?.originalname })
+            let id: number = -1;
+            db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, "1234", req.file?.originalname, ""])
+                .then(data => data.rows)
+                .then(async data => {
+                    if (data.length < 1) {
+                        await db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'error', $2);", ["1234", req.file?.originalname])
+                    } else id = data[0].id
+                })
+                .catch(async e => await db.query("INSERT INTO alerts(owner, type, upload, message) VALUES($1, 'error', $2, $3);", ["1234", req.file?.originalname, e.message]))
+            if (id != -1) await db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", ["1234", req.file?.originalname])
+            return Promise.all([video.save("processed/" + fileName), id])
         })
-        .then(_ => res.json({ file: req.file?.originalname }))
+        .then(data => {
+            if (data[1] != -1) {
+                db.query("UPDATE uploads SET finished = true WHERE id = $1 RETURNING *;", [])
+                    .then(data => data.rows)
+                    .then(async data => {
+                        if (data.length < 1) {
+                            await db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'error', $2);", ["1234", req.file?.originalname])
+                        } else {
+                            await db.query("UPDATE alerts SET type = $1 WHERE upload = $2;", ["finished", req.file?.originalname])
+                        }
+                    })
+                    .catch(async e => await db.query("INSERT INTO alerts(owner, type, upload, message) VALUES($1, 'error', $2, $3);", ["1234", req.file?.originalname, e.message]))
+            }
+        })
         .catch(e => res.status(403).json({ message: "There was an error uploading your file", error: e.msg }))
 })
 
