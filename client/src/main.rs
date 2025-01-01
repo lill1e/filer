@@ -22,13 +22,13 @@ fn main() {
     {
         Ok(res) => match res.status() {
             200 => match res.into_json::<UploadResult>() {
-                Ok(value) => println!("Placeholder message: {:?}", value),
+                Ok(result) => println!("{} is currently processing", result.file),
                 Err(error) => println!("An error occured with the upload request: {}", error),
             },
             _ => match res.into_json::<UploadError>() {
-                Ok(value) => println!(
+                Ok(result) => println!(
                     "An error occured with the upload request: {}",
-                    value.message
+                    result.message
                 ),
                 Err(error) => println!("An error occured with the upload request: {}", error),
             },
