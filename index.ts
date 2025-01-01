@@ -39,10 +39,10 @@ app.post("/test", upload.single("file"), (req, res) => {
     let fileName = getFileName(req.file.originalname) || (req.file.filename + ".mp4")
     new ffmpeg(req.file.path)
         .then(video => {
-            if (process.env.cropEnabled == "true") {
-                const cropSourceWidth = process.env.cropSourceWidth || "1920"
-                const cropWidth = process.env.cropWidth || "1920"
-                const cropHeight = process.env.cropHeight || "1080"
+            if (process.env.CROP_ENABLED == "true") {
+                const cropSourceWidth = process.env.CROP_SOURCE_WIDTH || "1920"
+                const cropWidth = process.env.CROP_WIDTH || "1920"
+                const cropHeight = process.env.CROP_HEIGHT || "1080"
                 video.addCommand("-vf", `crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             video.save("processed/" + fileName)
