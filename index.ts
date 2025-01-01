@@ -31,7 +31,7 @@ function getFileName(fileName: string): string | null {
     }
 }
 
-app.post("/test", upload.single("file"), (req, res) => {
+app.post("/upload", upload.single("file"), (req, res) => {
     let requestFufilled = false
     let alertRecorded = false
     let id: number = -1;
