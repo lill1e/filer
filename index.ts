@@ -46,6 +46,7 @@ app.post("/test", upload.single("file"), (req, res) => {
                 video.addCommand("-vf", `crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             video.save("processed/" + fileName)
+            return video.save("processed/" + fileName)
         })
         .then(_ => res.json({ file: req.file?.originalname }))
         .catch(e => res.status(403).json({ message: "There was an error uploading your file", error: e.msg }))
