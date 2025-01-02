@@ -34,7 +34,7 @@ function getFileName(fileName: string): string | null {
 app.post("/upload", upload.single("file"), (req, res) => {
     let requestFufilled = false
     let alertRecorded = false
-    let id: number = -1;
+    let id: number = -1
     if (req.file === undefined) {
         res.status(403).json({ message: "Please upload a file" })
         return
