@@ -52,6 +52,14 @@ app.get("/", (req, res) => {
     }
 })
 
+app.get("/logout", (req, res) => {
+    if (!req.cookies.tk) res.redirect("/")
+    else {
+        res.clearCookie("tk")
+        res.redirect("/")
+    }
+})
+
 app.get("/auth", (req, res) => {
     if (!req.query.code) {
         res.status(403).json({})
