@@ -45,6 +45,10 @@ app.get("/clips/:clip", (req, res) => {
 app.get("/", (req, res) => {
     if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
     else {
+        jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+            .then(res => res.payload)
+            .then(res.json)
+            .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
     }
 })
 
