@@ -38,8 +38,8 @@ function getFileName(fileName: string): string | null {
 app.get("/clips/:clip", (req, res) => {
     db.query("SELECT * FROM uploads WHERE id = $1", [req.params.clip]).then(data => data.rows).then(data => {
         if (data[0].finished) res.sendFile(`${process.cwd()}/processed/${data[0].file}`)
-        else res.status(403).send({})
-    }).catch(_ => res.status(403).send({}))
+        else res.status(403).json({})
+    }).catch(_ => res.status(403).json({}))
 })
 
 app.get("/", (req, res) => {
@@ -50,7 +50,7 @@ app.get("/", (req, res) => {
 
 app.get("/auth", (req, res) => {
     if (!req.query.code) {
-        res.status(403).send({})
+        res.status(403).json({})
         return
     }
     fetch("https://discord.com/api/oauth2/token", {
@@ -69,7 +69,7 @@ app.get("/auth", (req, res) => {
         .then(res => Promise.all([res.status, res.json()]))
         .then(data => {
             if (data[0] != 200) {
-                res.status(403).send({})
+                res.status(403).json({})
                 throw new Error()
             }
             return data[1].access_token
@@ -82,7 +82,7 @@ app.get("/auth", (req, res) => {
         .then(res => Promise.all([res.status, res.json()]))
         .then(async data => {
             if (data[0] != 200) {
-                res.status(403).send({})
+                res.status(403).json({})
                 throw new Error()
             }
             return data[1].id
@@ -91,7 +91,7 @@ app.get("/auth", (req, res) => {
         .then(res => res.rows)
         .then(data => {
             if (data.length < 1) {
-                res.status(401).send({})
+                res.status(401).json({})
                 throw new Error()
             }
             return new SignJWT(data[0])
@@ -102,7 +102,7 @@ app.get("/auth", (req, res) => {
         })
         .then(token => res.status(200).cookie("tk", token, { maxAge: 604800000, httpOnly: true }).json({ token: token }))
         .catch(_ => {
-            if (!res.headersSent) res.status(503).send({})
+            if (!res.headersSent) res.status(503).json({})
         })
 })
 
