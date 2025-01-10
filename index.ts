@@ -35,6 +35,13 @@ function getFileName(fileName: string): string | null {
     }
 }
 
+app.get("/clips/:clip", (req, res) => {
+    db.query("SELECT * FROM uploads WHERE id = $1", [req.params.clip]).then(data => data.rows).then(data => {
+        if (data[0].finished) res.sendFile(`${process.cwd()}/processed/${data[0].file}`)
+        else res.status(403).send({})
+    }).catch(_ => res.status(403).send({}))
+})
+
 app.get("/", (req, res) => {
     if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
     else {
