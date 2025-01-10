@@ -3,8 +3,12 @@ import multer from "multer"
 import ffmpeg from "ffmpeg"
 import * as dotenv from "dotenv"
 import { Client } from "pg"
+import { URLSearchParams } from "url"
+import { jwtVerify, SignJWT } from "jose"
+import cookieParser from "cookie-parser"
 
 const app = express()
+app.use(cookieParser())
 dotenv.config()
 const upload = multer({
     dest: "uploads/"
@@ -31,16 +35,90 @@ function getFileName(fileName: string): string | null {
     }
 }
 
+app.get("/", (req, res) => {
+    if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
+    else {
+    }
+})
+
+app.get("/auth", (req, res) => {
+    if (!req.query.code) {
+        res.status(403).send({})
+        return
+    }
+    fetch("https://discord.com/api/oauth2/token", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+            "grant_type": "authorization_code",
+            "client_id": process.env.DISCORD_CLIENT_ID as string,
+            "client_secret": process.env.DISCORD_CLIENT_SECRET as string,
+            "code": req.query.code as string,
+            "redirect_uri": process.env.DISCORD_REDIRECT_URL as string
+        })
+    })
+        .then(res => Promise.all([res.status, res.json()]))
+        .then(data => {
+            if (data[0] != 200) {
+                res.status(403).send({})
+                throw new Error()
+            }
+            return data[1].access_token
+        })
+        .then(accessToken => fetch("https://discord.com/api/users/@me", {
+            headers: {
+                "Authorization": `Bearer ${accessToken}`
+            }
+        }))
+        .then(res => Promise.all([res.status, res.json()]))
+        .then(async data => {
+            if (data[0] != 200) {
+                res.status(403).send({})
+                throw new Error()
+            }
+            return data[1].id
+        })
+        .then(userId => db.query("SELECT * FROM users WHERE id = $1;", [userId]))
+        .then(res => res.rows)
+        .then(data => {
+            if (data.length < 1) {
+                res.status(401).send({})
+                throw new Error()
+            }
+            return new SignJWT(data[0])
+                .setProtectedHeader({ alg: "HS256" })
+                .setIssuedAt()
+                .setExpirationTime("7d")
+                .sign(new TextEncoder().encode(process.env.JWT_SECRET))
+        })
+        .then(token => res.status(200).cookie("tk", token, { maxAge: 604800000, httpOnly: true }).json({ token: token }))
+        .catch(_ => {
+            if (!res.headersSent) res.status(503).send({})
+        })
+})
+
 app.post("/upload", upload.single("file"), (req, res) => {
-    let requestFufilled = false
-    let alertRecorded = false
+    if (!req.cookies.tk) {
+        res.status(401).json({ message: "Unauthorized use of this service" })
+        return
+    }
+    let owner: string = ""
+    let authorized = false
     let id: number = -1
     if (req.file === undefined) {
         res.status(403).json({ message: "Please upload a file" })
         return
     }
     let fileName = getFileName(req.file.originalname) || (req.file.filename + ".mp4")
-    new ffmpeg(req.file.path)
+    jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+        .then(res => {
+            authorized = true
+            owner = res.payload.id as string
+            console.log("proc starting")
+            return new ffmpeg(req.file?.path as string)
+        })
         .then(async video => {
             if (process.env.CROP_ENABLED == "true") {
                 const cropSourceWidth = process.env.CROP_SOURCE_WIDTH || "1920"
@@ -49,19 +127,16 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 video.addCommand("-vf", `crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            requestFufilled = true
-            return Promise.all([db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, "1234", req.file?.originalname, ""]), video])
+            return Promise.all([db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname, ""]), video])
         })
         .then(data => [data[0].rows, data[1]])
         .then(async data => {
             if ((data[0] as any).length < 1) {
-                await db.query("INSERT INTO alerts(owner, type, upload_name) VALUES($1, 'error', $2);", ["1234", req.file?.originalname])
-                alertRecorded = true
+                await db.query("INSERT INTO alerts(owner, type, upload_name) VALUES($1, 'error', $2);", [owner, req.file?.originalname])
                 throw new Error(undefined)
             } else {
                 id = (data[0] as any[])[0].id
-                await db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", ["1234", id])
-                alertRecorded = true
+                await db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])
                 return (data[1] as any).save("processed/" + fileName)
             }
         })
@@ -78,9 +153,10 @@ app.post("/upload", upload.single("file"), (req, res) => {
             else await db.query("UPDATE alerts SET type = 'finished' WHERE upload = $1;", [id])
         })
         .catch(async e => {
-            if (id != -1 && e != undefined && alertRecorded) await db.query("UPDATE alerts SET type = 'error' AND message = $1 WHERE upload = $2", [e.message || e.msg, id])
-            else if (e != undefined && !alertRecorded) await db.query("INSERT INTO alerts(owner, type, message, upload_name) VALUES($1, 'error', $2, $3)", ["1234", e.message || e.msg, req.file?.originalname])
-            if (!requestFufilled) res.status(403).json({ message: "There was an error uploading your file", error: e.msg || e.message })
+            if (!authorized) res.status(401).json({ message: "Unauthorized use of this service" })
+            if (e != undefined) await db.query("INSERT INTO alerts(owner, type, message, upload_name) VALUES($1, 'error', $2, $3)", [owner, "There was an issue processing this file", req.file?.originalname])
+            if (!res.headersSent) res.status(403).json({ message: "There was an error uploading your file" })
+            console.log(e.msg || e.message)
         })
 })
 
