@@ -1,3 +1,4 @@
+use cookie::Cookie;
 use serde_derive::Deserialize;
 use std::env;
 use ureq_multipart::MultipartRequest;
@@ -13,12 +14,20 @@ struct UploadError {
 }
 
 fn main() {
-    if let None = env::args().skip(1).next() {
+    if let None = env::args().skip(2).next() {
         println!("Please provide a file to upload");
         return;
     }
+    let mut args = env::args().skip(1);
     match ureq::post("https://clips.lillie.rs/upload")
-        .send_multipart_file("file", env::args().skip(1).next().unwrap())
+        .set(
+            "Cookie",
+            &Cookie::build(("tk", args.next().unwrap()))
+                .domain("https://clips.lillie.rs")
+                .build()
+                .to_string(),
+        )
+        .send_multipart_file("file", args.next().unwrap())
     {
         Ok(res) => match res.status() {
             200 => match res.into_json::<UploadResult>() {
