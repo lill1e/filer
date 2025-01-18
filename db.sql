@@ -1,5 +1,3 @@
-USE filer;
-
 CREATE TABLE users (
     id PRIMARY VARCHAR(20) NOT NULL,
     username VARCHAR(32) NOT NULL
