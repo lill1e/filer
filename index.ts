@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser"
 
 const app = express()
 app.use(cookieParser())
+app.set("view engine", "ejs")
 dotenv.config()
 const upload = multer({
     dest: "uploads/"
@@ -45,6 +46,15 @@ app.get("/raw/:clip", (req, res) => {
 app.get("/thumbnail/:clip", (req, res) => {
     db.query("SELECT * FROM uploads WHERE id = $1", [req.params.clip]).then(data => data.rows).then(data => {
         if (data[0].finished) res.sendFile(`${process.cwd()}/thumbnails/${data[0].id}.png`)
+        else res.status(403).json({})
+    }).catch(_ => res.status(403).json({}))
+})
+
+app.get("/clips/:clip", (req, res) => {
+    db.query("SELECT uploads.*,users.username FROM uploads uploads JOIN users users ON uploads.owner = users.id WHERE uploads.id = $1", [req.params.clip]).then(data => data.rows).then(data => {
+        if (data[0].finished) res.render(`${process.cwd()}/views/clip.ejs`, {
+            clipData: data[0]
+        })
         else res.status(403).json({})
     }).catch(_ => res.status(403).json({}))
 })
