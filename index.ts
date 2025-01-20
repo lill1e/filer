@@ -142,7 +142,6 @@ app.post("/upload", upload.single("file"), (req, res) => {
         .then(res => {
             authorized = true
             owner = res.payload.id as string
-            console.log("proc starting")
             return new ffmpeg(req.file?.path as string)
         })
         .then(async video => {
