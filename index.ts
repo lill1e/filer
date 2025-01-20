@@ -42,6 +42,13 @@ app.get("/raw/:clip", (req, res) => {
     }).catch(_ => res.status(403).json({}))
 })
 
+app.get("/thumbnail/:clip", (req, res) => {
+    db.query("SELECT * FROM uploads WHERE id = $1", [req.params.clip]).then(data => data.rows).then(data => {
+        if (data[0].finished) res.sendFile(`${process.cwd()}/thumbnails/${data[0].id}.png`)
+        else res.status(403).json({})
+    }).catch(_ => res.status(403).json({}))
+})
+
 app.get("/", (req, res) => {
     if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
     else {
@@ -168,8 +175,17 @@ app.post("/upload", upload.single("file"), (req, res) => {
         })
         .then(data => data.rows)
         .then(async data => {
-            if (data.length < 1) await db.query("UPDATE alerts SET type = 'error' WHERE upload = $1", [id])
-            else await db.query("UPDATE alerts SET type = 'finished' WHERE upload = $1;", [id])
+            if (data.length < 1) {
+                await db.query("UPDATE alerts SET type = 'error' WHERE upload = $1", [id])
+                throw new Error(undefined)
+            }
+            else return db.query("UPDATE alerts SET type = 'finished' WHERE upload = $1;", [id])
+        })
+        .then(_ => new ffmpeg(`processed/${fileName}`))
+        .then(video => {
+            video.setVideoFormat("mjpeg")
+            video.addCommand("-frames", "1")
+            return video.save(`thumbnails/${id}.png`)
         })
         .catch(async e => {
             if (!authorized) res.status(401).json({ message: "Unauthorized use of this service" })
