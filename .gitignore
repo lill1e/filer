@@ -3,4 +3,5 @@ client/target/
 dist/
 uploads/
 processed/
+thumbnails/
 .env
