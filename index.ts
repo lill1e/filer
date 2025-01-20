@@ -35,7 +35,7 @@ function getFileName(fileName: string): string | null {
     }
 }
 
-app.get("/clips/:clip", (req, res) => {
+app.get("/raw/:clip", (req, res) => {
     db.query("SELECT * FROM uploads WHERE id = $1", [req.params.clip]).then(data => data.rows).then(data => {
         if (data[0].finished) res.sendFile(`${process.cwd()}/processed/${data[0].file}`)
         else res.status(403).json({})
