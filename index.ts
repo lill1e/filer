@@ -131,6 +131,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
         return
     }
     let owner: string = ""
+    let ownerName: string = ""
     let authorized = false
     let id: number = -1
     if (req.file === undefined) {
@@ -142,6 +143,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
         .then(res => {
             authorized = true
             owner = res.payload.id as string
+            ownerName = res.payload.username as string
             return new ffmpeg(req.file?.path as string)
         })
         .then(async video => {
@@ -186,6 +188,13 @@ app.post("/upload", upload.single("file"), (req, res) => {
             video.addCommand("-frames", "1")
             return video.save(`thumbnails/${id}.png`)
         })
+        .then(_ => fetch(process.env.DISCORD_WEBHOOK as string, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ content: `A clips was uploaded by ${ownerName} at ${process.env.BASE_URL}/clips/${id}` })
+        }))
         .catch(async e => {
             if (!authorized) res.status(401).json({ message: "Unauthorized use of this service" })
             if (e != undefined) await db.query("INSERT INTO alerts(owner, type, message, upload_name) VALUES($1, 'error', $2, $3)", [owner, "There was an issue processing this file", req.file?.originalname])
