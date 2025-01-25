@@ -164,7 +164,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 video.addCommand("-vf", `crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            return Promise.all([db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname, ""]), video])
+            return Promise.all([db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""]), video])
         })
         .then(data => [data[0].rows, data[1]])
         .then(async data => {
