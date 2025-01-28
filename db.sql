@@ -4,7 +4,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE uploads (
-    id VARCHAR(20) PRIMARY KEY NOT NULL,
+    id SERIAL PRIMARY KEY NOT NULL,
     file TEXT NOT NULL,
     owner VARCHAR(20) NOT NULL,
     title TEXT NOT NULL,
