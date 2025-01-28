@@ -1,6 +1,6 @@
 import express from "express"
 import multer from "multer"
-import ffmpeg from "ffmpeg"
+import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg"
 import * as dotenv from "dotenv"
 import { Client } from "pg"
 import { URLSearchParams } from "url"
@@ -34,6 +34,20 @@ function getFileName(fileName: string): string | null {
     } else {
         return match.slice(0, 3).join(".") + "-" + match.slice(3, 7).join(".") + match[7]
     }
+}
+
+function videoSave(video: FfmpegCommand, fileName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        video.save(fileName).on("error", e => {
+            reject(e.message)
+        }).on("end", _ => resolve())
+    })
+}
+
+function videoThumbnail(video: FfmpegCommand, fileName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        video.screenshot({ count: 1, timestamps: [0], filename: fileName, folder: "thumbnails" }).on("error", e => reject(e.message)).on("end", _ => resolve())
+    })
 }
 
 app.get("/raw/:clip", (req, res) => {
@@ -150,31 +164,28 @@ app.post("/upload", upload.single("file"), (req, res) => {
     }
     let fileName = getFileName(req.file.originalname) || (req.file.filename + ".mp4")
     jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
-        .then(res => {
+        .then(async token => {
             authorized = true
-            owner = res.payload.id as string
-            ownerName = res.payload.username as string
-            return new ffmpeg(req.file?.path as string)
-        })
-        .then(async video => {
+            owner = token.payload.id as string
+            ownerName = token.payload.username as string
+            let video = ffmpeg(req.file?.path as string)
             if (process.env.CROP_ENABLED == "true") {
                 const cropSourceWidth = process.env.CROP_SOURCE_WIDTH || "1920"
                 const cropWidth = process.env.CROP_WIDTH || "1920"
                 const cropHeight = process.env.CROP_HEIGHT || "1080"
-                video.addCommand("-vf", `crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
+                video = video.videoFilter(`crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            return Promise.all([db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""]), video])
+            return Promise.all([videoSave(video, "processed/" + fileName), db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""])])
         })
-        .then(data => [data[0].rows, data[1]])
+        .then(data => data[1].rows)
         .then(async data => {
-            if ((data[0] as any).length < 1) {
+            if (data.length < 1) {
                 await db.query("INSERT INTO alerts(owner, type, upload_name) VALUES($1, 'error', $2);", [owner, req.file?.originalname])
                 throw new Error(undefined)
             } else {
-                id = (data[0] as any[])[0].id
-                await db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])
-                return (data[1] as any).save("processed/" + fileName)
+                id = data[0].id
+                return db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])
             }
         })
         .then(async _ => {
@@ -192,12 +203,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
             }
             else return db.query("UPDATE alerts SET type = 'finished' WHERE upload = $1;", [id])
         })
-        .then(_ => new ffmpeg(`processed/${fileName}`))
-        .then(video => {
-            video.setVideoFormat("mjpeg")
-            video.addCommand("-frames", "1")
-            return video.save(`thumbnails/${id}.png`)
-        })
+        .then(_ => videoThumbnail(ffmpeg(`processed/${fileName}`), `${id}.png`))
         .then(_ => fetch(process.env.DISCORD_WEBHOOK as string, {
             method: "POST",
             headers: {
