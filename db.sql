@@ -9,7 +9,8 @@ CREATE TABLE uploads (
     owner VARCHAR(20) NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    finished BOOLEAN NOT NULL DEFAULT false
+    finished BOOLEAN NOT NULL DEFAULT false,
+    visible BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE alerts (
