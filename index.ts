@@ -4,7 +4,7 @@ import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg"
 import * as dotenv from "dotenv"
 import { Client } from "pg"
 import { URLSearchParams } from "url"
-import { jwtVerify, SignJWT } from "jose"
+import { JWTPayload, jwtVerify, SignJWT } from "jose"
 import cookieParser from "cookie-parser"
 
 const app = express()
@@ -65,12 +65,23 @@ app.get("/thumbnail/:clip", (req, res) => {
 })
 
 app.get("/clips/:clip", (req, res) => {
-    db.query("SELECT uploads.*,users.username FROM uploads uploads JOIN users users ON uploads.owner = users.id WHERE uploads.id = $1", [req.params.clip]).then(data => data.rows).then(data => {
-        if (data[0].finished) res.render(`${process.cwd()}/views/clip.ejs`, {
-            clipData: data[0]
-        })
-        else res.status(403).json({})
-    }).catch(_ => res.status(403).json({}))
+    if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
+    else {
+        Promise.all([jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET)), db.query("SELECT uploads.*,users.username FROM uploads uploads JOIN users users ON uploads.owner = users.id WHERE uploads.id = $1", [req.params.clip])])
+            .then(res => [res[0].payload, res[1].rows] as [JWTPayload, any[]])
+            .then(([payload, data]) => {
+                if (data.length > 0 && (data[0].visible || payload.username == data[0].username)) {
+                    if (data[0].finished) res.render(`${process.cwd()}/views/clip.ejs`, {
+                        clipData: data[0]
+                    })
+                    else res.status(403).json({ message: "This video is still processing" })
+                } else throw new Error(undefined)
+            })
+            .catch(_ => {
+                if (!res.headersSent) res.status(401).json({ message: "Unauthorized use of this service" })
+            })
+
+    }
 })
 
 app.get("/", (req, res) => {
