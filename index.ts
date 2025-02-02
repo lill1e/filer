@@ -89,7 +89,7 @@ app.get("/", (req, res) => {
     else {
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
-            .then(res.json)
+            .then(data => res.json(data))
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
     }
 })
