@@ -1,6 +1,7 @@
 CREATE TABLE users (
     id VARCHAR(20) PRIMARY KEY NOT NULL,
-    username VARCHAR(32) NOT NULL
+    username VARCHAR(32) NOT NULL,
+    elevated boolean NOT NULL DEFAULT false,
 );
 
 CREATE TABLE uploads (
