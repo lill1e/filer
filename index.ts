@@ -6,6 +6,7 @@ import { Client } from "pg"
 import { URLSearchParams } from "url"
 import { JWTPayload, jwtVerify, SignJWT } from "jose"
 import cookieParser from "cookie-parser"
+import { randomUUID } from "crypto"
 
 const app = express()
 app.use(cookieParser())
@@ -266,6 +267,88 @@ app.post("/upload", upload.single("file"), (req, res) => {
             if (!authorized) res.status(401).json({ message: "Unauthorized use of this service" })
             if (e != undefined) await db.query("INSERT INTO alerts(owner, type, message, upload_name) VALUES($1, 'error', $2, $3)", [owner, "There was an issue processing this file", req.file?.originalname])
             if (!res.headersSent) res.status(403).json({ message: "There was an error uploading your file" })
+            console.log(e.msg || e.message)
+        })
+})
+
+app.post("/clips/:clip/edit", (req, res) => {
+    if (!req.cookies.tk) {
+        res.status(401).json({ message: "Unauthorized use of this service" })
+        return
+    }
+    let owner: string = ""
+    let ownerName: string = ""
+    let fileName: string = ""
+    let title: string = ""
+    let authorized = false
+    let id: number = -1
+    jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+        .then(data => data.payload)
+        .then(payload => {
+            authorized = true
+            owner = payload.id as string
+            ownerName = payload.username as string
+            return db.query("SELECT * FROM uploads WHERE id = $1 AND owner = $2", [req.params.clip, payload.id])
+        })
+        .then(data => data.rows)
+        .then(uploads => {
+            if (uploads.length > 0 && uploads[0].finished) return uploads[0]
+            else throw new Error(undefined)
+        })
+        .then(async upload => {
+            let video = ffmpeg("processed/" + upload.file)
+            if (req.body.seek) video = video.seek(req.body.seek)
+            if (req.body.to) video = video.inputOption(`-to ${req.body.to}`)
+            fileName = randomUUID().replaceAll("-", "")
+            title = upload.title
+            video.ffprobe((err, metadata) => {
+                if (err) throw new Error(err)
+                else {
+                    if (metadata.format.duration && !isNaN(metadata.format.duration)) {
+                        durations[fileName] = metadata.format.duration
+                    }
+                }
+            })
+            res.json({ file: upload.title })
+            return Promise.all([videoSave(video, "processed/" + fileName + ".mp4"), db.query("INSERT INTO uploads(file, owner, title, description, edited) VALUES($1, $2, $3, $4, $5) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id])])
+        })
+        .then(data => data[1].rows)
+        .then(async data => {
+            if (data.length < 1) {
+                await db.query("INSERT INTO alerts(owner, type, upload_name) VALUES($1, 'error', $2);", [owner, fileName])
+                throw new Error(undefined)
+            } else {
+                id = data[0].id
+                return db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])
+            }
+        })
+        .then(async _ => {
+            if (id == -1) {
+                await db.query("UPDATE alerts SET type = 'error' WHERE upload = $2", [id])
+                throw new Error(undefined)
+            }
+            return db.query("UPDATE uploads SET finished = true WHERE id = $1 RETURNING *;", [id])
+        })
+        .then(data => data.rows)
+        .then(async data => {
+            if (data.length < 1) {
+                await db.query("UPDATE alerts SET type = 'error' WHERE upload = $1", [id])
+                throw new Error(undefined)
+            }
+            else return db.query("UPDATE alerts SET type = 'finished' WHERE upload = $1;", [id])
+        })
+        .then(_ => videoThumbnail(ffmpeg(`processed/${fileName}.mp4`), `${id}.png`))
+        .then(_ => fetch(process.env.DISCORD_WEBHOOK as string, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ content: `An edited clip (**${title}**) was uploaded by ${ownerName} at ${process.env.BASE_URL}/clips/${id}` })
+        }))
+        .catch(async e => {
+            if (!authorized) res.status(401).json({ message: "Unauthorized use of this service" })
+            if (e != undefined) await db.query("INSERT INTO alerts(owner, type, message, upload_name) VALUES($1, 'error', $2, $3)", [owner, "There was an issue processing this file", fileName])
+            if (!res.headersSent) res.status(403).json({ message: "There was an error editing your file" })
             console.log(e.msg || e.message)
         })
 })

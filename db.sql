@@ -11,7 +11,8 @@ CREATE TABLE uploads (
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     finished BOOLEAN NOT NULL DEFAULT false,
-    visible BOOLEAN NOT NULL DEFAULT false
+    visible BOOLEAN NOT NULL DEFAULT false,
+    edited integer NOT NULL DEFAULT -1
 );
 
 CREATE TABLE alerts (
