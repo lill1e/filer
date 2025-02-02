@@ -22,6 +22,16 @@ const db = new Client({
     database: process.env.DATABASE_NAME || "mydatabase",
 })
 
+interface MapStrN {
+    [key: string]: number
+}
+interface MapStrStr {
+    [key: string]: string
+}
+
+const durations: MapStrN = {}
+const operations: MapStrStr = {}
+
 db.connect()
     .catch(e => console.log(`There was a problem connecting to the database: ${e}`))
 
@@ -40,7 +50,16 @@ function videoSave(video: FfmpegCommand, fileName: string): Promise<void> {
     return new Promise((resolve, reject) => {
         video.save(fileName).on("error", e => {
             reject(e.message)
-        }).on("end", _ => resolve())
+        }).on("end", _ => {
+            operations[fileName] = "100.00"
+            resolve()
+        }).on("progress", p => {
+            if (p.timemark != "N/A") {
+                let times = p.timemark.split(".")[0].split(":").map(Number)
+                let timeInSeconds = times[0] * 3600 + times[1] * 60 + times[2]
+                operations[fileName] = (timeInSeconds / durations[fileName] * 100).toFixed(2)
+            }
+        })
     })
 }
 
@@ -90,6 +109,19 @@ app.get("/", (req, res) => {
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
             .then(data => res.json(data))
+            .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
+    }
+})
+
+app.get("/operations", (req, res) => {
+    if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
+    else {
+        jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+            .then(res => res.payload)
+            .then(data => {
+                if (data.elevated) res.json(operations)
+                else throw new Error()
+            })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
     }
 })
@@ -180,6 +212,14 @@ app.post("/upload", upload.single("file"), (req, res) => {
             owner = token.payload.id as string
             ownerName = token.payload.username as string
             let video = ffmpeg(req.file?.path as string)
+            video.ffprobe((err, metadata) => {
+                if (err) throw new Error(undefined)
+                else {
+                    if (metadata.format.duration && !isNaN(metadata.format.duration)) {
+                        durations["processed/" + fileName] = metadata.format.duration
+                    }
+                }
+            })
             if (process.env.CROP_ENABLED == "true") {
                 const cropSourceWidth = process.env.CROP_SOURCE_WIDTH || "1920"
                 const cropWidth = process.env.CROP_WIDTH || "1920"
