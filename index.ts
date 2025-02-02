@@ -217,7 +217,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 if (err) throw new Error(undefined)
                 else {
                     if (metadata.format.duration && !isNaN(metadata.format.duration)) {
-                        durations["processed/" + fileName] = metadata.format.duration
+                        durations[fileName] = metadata.format.duration
                     }
                 }
             })
