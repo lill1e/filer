@@ -220,7 +220,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ content: `A clips was uploaded by ${ownerName} at ${process.env.BASE_URL}/clips/${id}` })
+            body: JSON.stringify({ content: `A clip (**${req.file?.originalname}**) was uploaded by ${ownerName} at ${process.env.BASE_URL}/clips/${id}` })
         }))
         .catch(async e => {
             if (!authorized) res.status(401).json({ message: "Unauthorized use of this service" })
