@@ -26,12 +26,9 @@ const db = new Client({
 interface MapStrN {
     [key: string]: number
 }
-interface MapStrStr {
-    [key: string]: string
-}
 
 const durations: MapStrN = {}
-const operations: MapStrStr = {}
+const operations: MapStrN = {}
 
 db.connect()
     .catch(e => console.log(`There was a problem connecting to the database: ${e}`))
@@ -49,16 +46,16 @@ function getFileName(fileName: string): string | null {
 
 function videoSave(video: FfmpegCommand, fileName: string): Promise<void> {
     return new Promise((resolve, reject) => {
-        video.save(fileName).on("error", e => {
+        video.save("processed/" + fileName).on("error", e => {
             reject(e.message)
         }).on("end", _ => {
-            operations[fileName] = "100.00"
+            operations[fileName] = 100.00
             resolve()
         }).on("progress", p => {
             if (p.timemark != "N/A") {
                 let times = p.timemark.split(".")[0].split(":").map(Number)
                 let timeInSeconds = times[0] * 3600 + times[1] * 60 + times[2]
-                operations[fileName] = (timeInSeconds / durations[fileName] * 100).toFixed(2)
+                operations[fileName] = (timeInSeconds / durations[fileName] * 100)
             }
         })
     })
@@ -228,7 +225,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 video = video.videoFilter(`crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            return Promise.all([videoSave(video, "processed/" + fileName), db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""])])
+            return Promise.all([videoSave(video, fileName), db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""])])
         })
         .then(data => data[1].rows)
         .then(async data => {
@@ -310,7 +307,7 @@ app.post("/clips/:clip/edit", (req, res) => {
                 }
             })
             res.json({ file: upload.title })
-            return Promise.all([videoSave(video, "processed/" + fileName + ".mp4"), db.query("INSERT INTO uploads(file, owner, title, description, edited) VALUES($1, $2, $3, $4, $5) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id])])
+            return Promise.all([videoSave(video, fileName + ".mp4"), db.query("INSERT INTO uploads(file, owner, title, description, edited) VALUES($1, $2, $3, $4, $5) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id])])
         })
         .then(data => data[1].rows)
         .then(async data => {
