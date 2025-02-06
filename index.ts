@@ -104,9 +104,22 @@ app.get("/clips/:clip", (req, res) => {
 app.get("/", (req, res) => {
     if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
     else {
+        let filterQuery = ""
+        if (req.query.filter) {
+            if (req.query.filter == "processing") filterQuery = " AND finished = false"
+            if (req.query.filter == "processed") filterQuery = " AND finished = true"
+            if (req.query.filter == "public") filterQuery = " AND visible = true"
+            if (req.query.filter == "private") filterQuery = " AND finished = false"
+        }
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
-            .then(data => res.json(data))
+            .then(data => db.query(`SELECT id,title,finished,visible FROM uploads WHERE owner = $1${filterQuery};`, [data.id]))
+            .then(data => data.rows)
+            .then(data => {
+                res.render(`${process.cwd()}/views/list.ejs`, {
+                    uploads: data.map(row => `<tr><th scope="row">${row.id}</th><td>${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td>${row.finished ? "T" : "F"}</td><td>${row.visible ? "T" : "F"}</td></tr>`).join("")
+                })
+            })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
     }
 })
