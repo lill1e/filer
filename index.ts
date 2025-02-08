@@ -135,7 +135,7 @@ app.get("/operations", (req, res) => {
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
             .then(data => {
-                if (data.elevated) res.json(operations)
+                if (data.elevated) res.json({})
                 else throw new Error()
             })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
