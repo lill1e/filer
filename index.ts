@@ -23,12 +23,17 @@ const db = new Client({
     database: process.env.DATABASE_NAME || "mydatabase",
 })
 
-interface MapStrN {
-    [key: string]: number
+interface Upload {
+    file: string,
+    duration: number,
+    progress: number,
+    video: FfmpegCommand
+}
+interface Uploads {
+    [key: number]: Upload
 }
 
-const durations: MapStrN = {}
-const operations: MapStrN = {}
+const uploads: Uploads = {}
 
 db.connect()
     .catch(e => console.log(`There was a problem connecting to the database: ${e}`))
@@ -44,18 +49,18 @@ function getFileName(fileName: string): string | null {
     }
 }
 
-function videoSave(video: FfmpegCommand, fileName: string): Promise<void> {
+function videoSave(video: FfmpegCommand, upload: Upload): Promise<void> {
     return new Promise((resolve, reject) => {
-        video.save("processed/" + fileName).on("error", e => {
+        video.save("processed/" + upload.file).on("error", e => {
             reject(e.message)
         }).on("end", _ => {
-            operations[fileName] = 100.00
+            upload.progress = 100.00
             resolve()
         }).on("progress", p => {
             if (p.timemark != "N/A") {
                 let times = p.timemark.split(".")[0].split(":").map(Number)
                 let timeInSeconds = times[0] * 3600 + times[1] * 60 + times[2]
-                operations[fileName] = (timeInSeconds / durations[fileName] * 100)
+                upload.progress = (timeInSeconds / upload.duration * 100)
             }
         })
     })
@@ -212,6 +217,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
     let ownerName: string = ""
     let authorized = false
     let id: number = -1
+    let thisUpload: Upload
     if (req.file === undefined) {
         res.status(403).json({ message: "Please upload a file" })
         return
@@ -223,11 +229,17 @@ app.post("/upload", upload.single("file"), (req, res) => {
             owner = token.payload.id as string
             ownerName = token.payload.username as string
             let video = ffmpeg(req.file?.path as string)
+            thisUpload = {
+                file: fileName,
+                duration: NaN,
+                progress: NaN,
+                video: video
+            }
             video.ffprobe((err, metadata) => {
                 if (err) throw new Error(undefined)
                 else {
                     if (metadata.format.duration && !isNaN(metadata.format.duration)) {
-                        durations[fileName] = metadata.format.duration
+                        thisUpload.duration = metadata.format.duration
                     }
                 }
             })
@@ -238,18 +250,20 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 video = video.videoFilter(`crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            return Promise.all([videoSave(video, fileName), db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""])])
+            return db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""])
         })
-        .then(data => data[1].rows)
+        .then(data => data.rows)
         .then(async data => {
             if (data.length < 1) {
                 await db.query("INSERT INTO alerts(owner, type, upload_name) VALUES($1, 'error', $2);", [owner, req.file?.originalname])
                 throw new Error(undefined)
             } else {
                 id = data[0].id
-                return db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])
+                uploads[id] = thisUpload
+                return Promise.all([videoSave(uploads[id].video, uploads[id]), db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])])
             }
         })
+        .then(data => data[1])
         .then(async _ => {
             if (id == -1) {
                 await db.query("UPDATE alerts SET type = 'error' WHERE upload = $2", [id])
@@ -292,6 +306,7 @@ app.post("/clips/:clip/edit", (req, res) => {
     let title: string = ""
     let authorized = false
     let id: number = -1
+    let thisUpload: Upload
     jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
         .then(data => data.payload)
         .then(payload => {
@@ -311,27 +326,35 @@ app.post("/clips/:clip/edit", (req, res) => {
             if (req.body.to) video = video.inputOption(`-to ${req.body.to}`)
             fileName = randomUUID().replaceAll("-", "")
             title = upload.title
+            thisUpload = {
+                file: fileName + ".mp4",
+                duration: NaN,
+                progress: NaN,
+                video: video
+            }
             video.ffprobe((err, metadata) => {
                 if (err) throw new Error(err)
                 else {
                     if (metadata.format.duration && !isNaN(metadata.format.duration)) {
-                        durations[fileName] = metadata.format.duration
+                        thisUpload.duration = metadata.format.duration
                     }
                 }
             })
             res.json({ file: upload.title })
-            return Promise.all([videoSave(video, fileName + ".mp4"), db.query("INSERT INTO uploads(file, owner, title, description, edited) VALUES($1, $2, $3, $4, $5) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id])])
+            return db.query("INSERT INTO uploads(file, owner, title, description, edited) VALUES($1, $2, $3, $4, $5) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id])
         })
-        .then(data => data[1].rows)
+        .then(data => data.rows)
         .then(async data => {
             if (data.length < 1) {
                 await db.query("INSERT INTO alerts(owner, type, upload_name) VALUES($1, 'error', $2);", [owner, fileName])
                 throw new Error(undefined)
             } else {
                 id = data[0].id
-                return db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])
+                uploads[id] = thisUpload
+                return Promise.all([videoSave(uploads[id].video, uploads[id]), db.query("INSERT INTO alerts(owner, type, upload) VALUES($1, 'processing', $2);", [owner, id])])
             }
         })
+        .then(data => data[1])
         .then(async _ => {
             if (id == -1) {
                 await db.query("UPDATE alerts SET type = 'error' WHERE upload = $2", [id])
