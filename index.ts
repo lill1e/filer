@@ -119,15 +119,19 @@ app.get("/", (req, res) => {
     if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
     else {
         let filterQuery = ""
+        let sort = "ASC"
         if (req.query.filter) {
             if (req.query.filter == "processing") filterQuery = " AND finished = false"
             if (req.query.filter == "processed") filterQuery = " AND finished = true"
             if (req.query.filter == "public") filterQuery = " AND visible = true"
             if (req.query.filter == "private") filterQuery = " AND finished = false"
         }
+        if (req.query.sort) {
+            if (req.query.sort == "descending") sort = "DESC"
+        }
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
-            .then(data => db.query(`SELECT id,title,finished,visible FROM uploads WHERE owner = $1${filterQuery};`, [data.id]))
+            .then(data => db.query(`SELECT id,title,finished,visible FROM uploads WHERE owner = $1${filterQuery} ORDER BY id ${sort};`, [data.id]))
             .then(data => data.rows)
             .then(data => {
                 if (data.length > 0) data[data.length - 1].last = true
