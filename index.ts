@@ -23,6 +23,15 @@ const db = new Client({
     database: process.env.DATABASE_NAME || "mydatabase",
 })
 
+interface Operation {
+    file: string,
+    duration: number,
+    progress: number,
+    video: number
+}
+interface Operations {
+    [key: number]: Operation
+}
 interface Upload {
     file: string,
     duration: number,
@@ -135,7 +144,13 @@ app.get("/operations", (req, res) => {
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
             .then(data => {
-                if (data.elevated) res.json({})
+                if (data.elevated) {
+                    let operations: Operations = {}
+                    Object.keys(uploads).map(Number).forEach(upload => {
+                        operations[upload] = { ...uploads[upload], video: upload }
+                    })
+                    res.json(operations)
+                }
                 else throw new Error()
             })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
