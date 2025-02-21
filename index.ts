@@ -190,6 +190,31 @@ app.get("/logout", (req, res) => {
     }
 })
 
+app.get("/refresh", (req, res) => {
+    if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
+    else {
+        jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+            .then(token => token.payload.id as string)
+            .then(userId => db.query("SELECT * FROM users WHERE id = $1;", [userId]))
+            .then(res => res.rows)
+            .then(data => {
+                if (data.length < 1) {
+                    res.status(401).json({ message: "Unauthorized use of this service" })
+                    throw new Error()
+                }
+                return new SignJWT(data[0])
+                    .setProtectedHeader({ alg: "HS256" })
+                    .setIssuedAt()
+                    .setExpirationTime("7d")
+                    .sign(new TextEncoder().encode(process.env.JWT_SECRET))
+            })
+            .then(token => res.status(200).cookie("tk", token, { maxAge: 604800000, httpOnly: true }).json({ token: token }))
+            .catch(_ => {
+                res.status(401).json({ message: "Unauthorized use of this service" })
+            })
+    }
+})
+
 app.get("/auth", (req, res) => {
     if (!req.query.code) {
         res.status(403).json({})
