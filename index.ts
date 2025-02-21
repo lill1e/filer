@@ -162,6 +162,26 @@ app.get("/operations", (req, res) => {
     }
 })
 
+app.get("/operations/:operation", (req, res) => {
+    if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
+    else {
+        jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+            .then(res => res.payload)
+            .then(data => {
+                if (data.elevated) {
+                    let operations: Operations = {}
+                    Object.keys(uploads).map(Number).forEach(upload => {
+                        operations[upload] = { ...uploads[upload], video: upload }
+                    })
+                    if (req.params.operation && operations[parseInt(req.params.operation)]) res.json(operations[parseInt(req.params.operation)])
+                    else res.status(404).json({ message: "Operation not found" })
+                }
+                else throw new Error()
+            })
+            .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
+    }
+})
+
 app.get("/logout", (req, res) => {
     if (!req.cookies.tk) res.redirect("/")
     else {
