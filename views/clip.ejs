@@ -33,6 +33,7 @@
     <div class="flex flex-col flex-no-wrap w-full max-w-[64rem] justify-between text-left">
         <h3 class="fs-3 text-light font-semibold m-0 break-all mb-2">
             <%= clipData.title %>
+                <%= clipData.visible ? "" : " (Private)" %>
         </h3>
         <p class="fs-5 text-body">Uploaded by: <%= clipData.username %>
         </p>
