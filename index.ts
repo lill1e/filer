@@ -151,7 +151,7 @@ app.get("/", (req, res) => {
             .then(data => {
                 if (data.length > 0) data[data.length - 1].last = true
                 res.render(`${process.cwd()}/views/list.ejs`, {
-                    uploads: data.map(row => `<tr><th${row.last ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${row.id}</th><td>${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td>${row.finished ? "✅" : "❌"}</td><td${row.last ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${row.visible ? "✅" : "❌"}</td></tr>`).join("")
+                    uploads: data.map(row => `<tr><th${row.last ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${row.id}</th><td>${row.visible ? "" : "🔒 "}${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td${row.last ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${row.finished ? "✅" : "❌"}</td></tr>`).join("")
                 })
             })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
