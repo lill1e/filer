@@ -14,20 +14,22 @@
     <meta property="og:video:url" content="https://clips.lillie.rs/raw/<%= clipData.id %>">
     <meta property="og:video:secure_url" content="https://clips.lillie.rs/raw/<%= clipData.id %>">
     <meta property="og:video:type" content="video/mp4">
-    <meta property="og:video:width" content="2048">
-    <meta property="og:video:height" content="1152">
+    <meta property="og:video:width" content="<%= clipData.width %>">
+    <meta property="og:video:height" content="<%= clipData.height %>">
     <meta property="og:type" content="video.other">
     <meta name="twitter:card" content="player">
     <meta name="twitter:title" content="<%= clipData.title %>">
     <meta name="twitter:image" content="https://clips.lillie.rs/thumbnail/<%= clipData.id %>">
     <meta name="twitter:player" content="https://clips.lillie.rs/raw/<%= clipData.id %>">
     <meta name="twitter:player:stream" content="https://clips.lillie.rs/raw/<%= clipData.id %>">
-    <meta name="twitter:player:width" content="2048">
-    <meta name="twitter:player:height" content="1152">
+    <meta name="twitter:player:width" content="<%= clipData.width %>">
+    <meta name="twitter:player:height" content="<%= clipData.height %>">
 </head>
 
 <body class="m-3" style="background-color: dimgray;">
-    <video style="border-radius: .75rem;" width="2048" height="1152" controls>
+    <video
+        style="border-radius: .75rem; object-fit: contain; width: 100%; height: auto; max-width: <%= clipData.width %>px;"
+        width="<%= clipData.width %>" height="<%= clipData.height %>" controls>
         <source src="/raw/<%= clipData.id %>" type="video/mp4">
     </video>
     <div class="flex flex-col flex-no-wrap w-full max-w-[64rem] justify-between text-left">
