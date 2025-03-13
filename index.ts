@@ -1,6 +1,6 @@
 import express from "express"
 import multer from "multer"
-import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg"
+import ffmpeg, { FfmpegCommand, FfprobeData } from "fluent-ffmpeg"
 import * as dotenv from "dotenv"
 import { Client } from "pg"
 import { URLSearchParams } from "url"
@@ -71,6 +71,15 @@ function videoSave(video: FfmpegCommand, upload: Upload): Promise<void> {
                 let timeInSeconds = times[0] * 3600 + times[1] * 60 + times[2]
                 upload.progress = (timeInSeconds / upload.duration * 100)
             }
+        })
+    })
+}
+
+function ffprobe(video: FfmpegCommand): Promise<FfprobeData> {
+    return new Promise((resolve, reject) => {
+        video.ffprobe((err, metadata) => {
+            if (err) reject(err)
+            else resolve(metadata)
         })
     })
 }
