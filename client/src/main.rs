@@ -26,17 +26,16 @@ struct Args {
     token: String,
 }
 
-fn main() {
-    let args = Args::parse();
+fn upload(path: String, token: String) -> () {
     match ureq::post(&format!("{}/upload", BASE_URL))
         .set(
             "Cookie",
-            &Cookie::build(("tk", args.token))
+            &Cookie::build(("tk", token))
                 .domain(BASE_URL)
                 .build()
                 .to_string(),
         )
-        .send_multipart_file("file", args.path)
+        .send_multipart_file("file", path)
     {
         Ok(res) => match res.status() {
             200 => match res.into_json::<UploadResult>() {
@@ -53,4 +52,9 @@ fn main() {
         },
         Err(error) => println!("An error occured with the upload request: {}", error),
     };
+}
+
+fn main() {
+    let args = Args::parse();
+    upload(args.path, args.token);
 }
