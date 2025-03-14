@@ -1,7 +1,6 @@
 use clap::Parser;
 use cookie::Cookie;
 use serde_derive::Deserialize;
-use std::env;
 use ureq_multipart::MultipartRequest;
 
 #[derive(Debug, Deserialize)]
