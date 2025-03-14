@@ -3,6 +3,8 @@ use cookie::Cookie;
 use serde_derive::Deserialize;
 use ureq_multipart::MultipartRequest;
 
+static BASE_URL: &'static str = "https://clips.lillie.rs";
+
 #[derive(Debug, Deserialize)]
 struct UploadResult {
     file: String,
@@ -26,11 +28,11 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    match ureq::post("https://clips.lillie.rs/upload")
+    match ureq::post(&format!("{}/upload", BASE_URL))
         .set(
             "Cookie",
             &Cookie::build(("tk", args.token))
-                .domain("https://clips.lillie.rs")
+                .domain(BASE_URL)
                 .build()
                 .to_string(),
         )
