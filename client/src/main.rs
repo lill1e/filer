@@ -1,3 +1,4 @@
+use clap::Parser;
 use cookie::Cookie;
 use serde_derive::Deserialize;
 use std::env;
@@ -13,21 +14,28 @@ struct UploadError {
     message: String,
 }
 
+#[derive(Parser)]
+struct Args {
+    /// The path to the file you would like to upload
+    #[arg(short, long)]
+    path: String,
+
+    /// The provided token to use this service
+    #[arg(short, long)]
+    token: String,
+}
+
 fn main() {
-    if let None = env::args().skip(2).next() {
-        println!("Please provide a file to upload");
-        return;
-    }
-    let mut args = env::args().skip(1);
+    let args = Args::parse();
     match ureq::post("https://clips.lillie.rs/upload")
         .set(
             "Cookie",
-            &Cookie::build(("tk", args.next().unwrap()))
+            &Cookie::build(("tk", args.token))
                 .domain("https://clips.lillie.rs")
                 .build()
                 .to_string(),
         )
-        .send_multipart_file("file", args.next().unwrap())
+        .send_multipart_file("file", args.path)
     {
         Ok(res) => match res.status() {
             200 => match res.into_json::<UploadResult>() {
