@@ -12,7 +12,9 @@ CREATE TABLE uploads (
     description TEXT NOT NULL,
     finished BOOLEAN NOT NULL DEFAULT false,
     visible BOOLEAN NOT NULL DEFAULT false,
-    edited integer NOT NULL DEFAULT -1
+    edited integer NOT NULL DEFAULT -1,
+    width integer NOT NULL,
+    height integer NOT NULL
 );
 
 CREATE TABLE alerts (

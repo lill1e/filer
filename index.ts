@@ -1,6 +1,6 @@
 import express from "express"
 import multer from "multer"
-import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg"
+import ffmpeg, { FfmpegCommand, FfprobeData } from "fluent-ffmpeg"
 import * as dotenv from "dotenv"
 import { Client } from "pg"
 import { URLSearchParams } from "url"
@@ -36,6 +36,8 @@ interface Upload {
     file: string,
     duration: number,
     progress: number,
+    width: number,
+    height: number,
     video: FfmpegCommand
 }
 interface Uploads {
@@ -71,6 +73,15 @@ function videoSave(video: FfmpegCommand, upload: Upload): Promise<void> {
                 let timeInSeconds = times[0] * 3600 + times[1] * 60 + times[2]
                 upload.progress = (timeInSeconds / upload.duration * 100)
             }
+        })
+    })
+}
+
+function ffprobe(video: FfmpegCommand): Promise<FfprobeData> {
+    return new Promise((resolve, reject) => {
+        video.ffprobe((err, metadata) => {
+            if (err) reject(err)
+            else resolve(metadata)
         })
     })
 }
@@ -151,7 +162,7 @@ app.get("/", (req, res) => {
             .then(data => {
                 if (data.length > 0) data[data.length - 1].last = true
                 res.render(`${process.cwd()}/views/list.ejs`, {
-                    uploads: data.map(row => `<tr><th${row.last ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${row.id}</th><td>${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td>${row.finished ? "✅" : "❌"}</td><td${row.last ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${row.visible ? "✅" : "❌"}</td></tr>`).join("")
+                    uploads: data.map(row => `<tr><th${row.last ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${row.id}</th><td>${row.visible ? "" : "🔒 "}${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td${row.last ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${row.finished ? "✅" : "❌"}</td></tr>`).join("")
                 })
             })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
@@ -308,21 +319,25 @@ app.post("/upload", upload.single("file"), (req, res) => {
             authorized = true
             owner = token.payload.id as string
             ownerName = token.payload.username as string
-            let video = ffmpeg(req.file?.path as string)
             thisUpload = {
                 file: fileName,
                 duration: NaN,
                 progress: NaN,
-                video: video
+                width: NaN,
+                height: NaN,
+                video: ffmpeg(req.file?.path as string)
             }
-            video.ffprobe((err, metadata) => {
-                if (err) throw new Error(undefined)
-                else {
-                    if (metadata.format.duration && !isNaN(metadata.format.duration)) {
-                        thisUpload.duration = metadata.format.duration
-                    }
-                }
-            })
+            return ffprobe(thisUpload.video)
+        })
+        .then(videoData => {
+            let video = thisUpload.video
+            let videos = videoData.streams.filter(s => s.codec_type == "video")
+            if (videos.length <= 0 || !videos[0].width || !videos[0].height) throw new Error(undefined)
+            if (videoData.format.duration && !isNaN(videoData.format.duration)) {
+                thisUpload.duration = videoData.format.duration
+                thisUpload.width = videos[0].width
+                thisUpload.height = videos[0].height
+            }
             if (process.env.CROP_ENABLED == "true") {
                 const cropSourceWidth = process.env.CROP_SOURCE_WIDTH || "1920"
                 const cropWidth = process.env.CROP_WIDTH || "1920"
@@ -330,7 +345,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 video = video.videoFilter(`crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            return db.query("INSERT INTO uploads(file, owner, title, description) VALUES($1, $2, $3, $4) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), ""])
+            return db.query("INSERT INTO uploads(file, owner, title, description, width, height) VALUES($1, $2, $3, $4, $5, $6) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), "", thisUpload.width, thisUpload.height])
         })
         .then(data => data.rows)
         .then(async data => {
@@ -401,18 +416,19 @@ app.post("/clips/:clip/edit", (req, res) => {
             else throw new Error(undefined)
         })
         .then(async upload => {
-            let video = ffmpeg("processed/" + upload.file)
-            if (req.body.seek) video = video.seek(req.body.seek)
-            if (req.body.to) video = video.inputOption(`-to ${req.body.to}`)
+            if (req.body.seek) thisUpload.video = thisUpload.video.seek(req.body.seek)
+            if (req.body.to) thisUpload.video = thisUpload.video.inputOption(`-to ${req.body.to}`)
             fileName = randomUUID().replaceAll("-", "")
             title = upload.title
             thisUpload = {
                 file: fileName + ".mp4",
                 duration: NaN,
                 progress: NaN,
-                video: video
+                width: upload.width,
+                height: upload.height,
+                video: ffmpeg("processed/" + upload.file),
             }
-            video.ffprobe((err, metadata) => {
+            thisUpload.video.ffprobe((err, metadata) => {
                 if (err) throw new Error(err)
                 else {
                     if (metadata.format.duration && !isNaN(metadata.format.duration)) {
@@ -421,7 +437,7 @@ app.post("/clips/:clip/edit", (req, res) => {
                 }
             })
             res.json({ file: upload.title })
-            return db.query("INSERT INTO uploads(file, owner, title, description, edited) VALUES($1, $2, $3, $4, $5) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id])
+            return db.query("INSERT INTO uploads(file, owner, title, description, edited, width, height) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id, upload.width, upload.height])
         })
         .then(data => data.rows)
         .then(async data => {
