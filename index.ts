@@ -310,7 +310,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
     let authorized = false
     let id: number = -1
     let thisUpload: Upload
-    if (req.file === undefined) {
+    if (!req.file) {
         res.status(403).json({ message: "Please upload a file" })
         return
     }
