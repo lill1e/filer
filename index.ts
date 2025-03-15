@@ -209,6 +209,24 @@ app.get("/operations/:operation", (req, res) => {
     }
 })
 
+app.get("/processing", (req, res) => {
+    if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
+    else {
+        jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+            .then(res => res.payload)
+            .then(user => {
+                if (!user.elevated) throw new Error()
+                let uploadIds: number[] = Object.keys(uploads).map(s => Number(s))
+                let last = -1
+                if (uploadIds.length > 0) last = uploadIds[uploadIds.length - 1]
+                res.render(`${process.cwd()}/views/operations.ejs`, {
+                    operations: uploadIds.map(upload => `<tr><th${last == upload ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${upload}</th><td>${uploads[upload].displayName}</td><td><a href="${process.env.BASE_URL}/clips/${uploads[upload].video}">Link</a></td><td>${uploads[upload].width}x${uploads[upload].height}</td><td${last == upload ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${uploads[upload].progress.toFixed(2)}%</td></tr>`).join("")
+                })
+            })
+            .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
+    }
+})
+
 app.get("/logout", (req, res) => {
     if (!req.cookies.tk) res.redirect("/")
     else {
