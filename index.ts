@@ -34,6 +34,7 @@ interface Operations {
 }
 interface Upload {
     file: string,
+    displayName: string,
     duration: number,
     progress: number,
     width: number,
@@ -321,6 +322,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
             ownerName = token.payload.username as string
             thisUpload = {
                 file: fileName,
+                displayName: req.file?.originalname.replace("unknown_replay", "Replay") as string,
                 duration: NaN,
                 progress: NaN,
                 width: NaN,
@@ -345,7 +347,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 video = video.videoFilter(`crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            return db.query("INSERT INTO uploads(file, owner, title, description, width, height) VALUES($1, $2, $3, $4, $5, $6) RETURNING *;", [fileName, owner, req.file?.originalname.replace("unknown_replay", "Replay"), "", thisUpload.width, thisUpload.height])
+            return db.query("INSERT INTO uploads(file, owner, title, description, width, height) VALUES($1, $2, $3, $4, $5, $6) RETURNING *;", [fileName, owner, thisUpload.displayName, "", thisUpload.width, thisUpload.height])
         })
         .then(data => data.rows)
         .then(async data => {
@@ -380,7 +382,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ content: `A clip (**${req.file?.originalname.replace("unknown_replay", "Replay")}**) was uploaded by ${ownerName} at ${process.env.BASE_URL}/clips/${id}` })
+            body: JSON.stringify({ content: `A clip (**${thisUpload.displayName}**) was uploaded by ${ownerName} at ${process.env.BASE_URL}/clips/${id}` })
         }))
         .catch(async e => {
             if (!authorized) res.status(401).json({ message: "Unauthorized use of this service" })
@@ -422,6 +424,7 @@ app.post("/clips/:clip/edit", (req, res) => {
             title = upload.title
             thisUpload = {
                 file: fileName + ".mp4",
+                displayName: upload.title,
                 duration: NaN,
                 progress: NaN,
                 width: upload.width,
