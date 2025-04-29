@@ -14,7 +14,8 @@ CREATE TABLE uploads (
     visible BOOLEAN NOT NULL DEFAULT false,
     edited integer NOT NULL DEFAULT -1,
     width integer NOT NULL,
-    height integer NOT NULL
+    height integer NOT NULL,
+    tag TEXT
 );
 
 CREATE TABLE alerts (

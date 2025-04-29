@@ -39,7 +39,8 @@ interface Upload {
     progress: number,
     width: number,
     height: number,
-    video: FfmpegCommand
+    video: FfmpegCommand,
+    tag?: string
 }
 interface Uploads {
     [key: number]: Upload
@@ -166,12 +167,12 @@ app.get("/", (req, res) => {
         }
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
-            .then(data => db.query(`SELECT id,title,finished,visible FROM uploads WHERE owner = $1${filterQuery} ORDER BY id ${sort};`, [data.id]))
+            .then(data => db.query(`SELECT id,title,finished,visible,tag FROM uploads WHERE owner = $1${filterQuery} ORDER BY id ${sort};`, [data.id]))
             .then(data => data.rows)
             .then(data => {
                 if (data.length > 0) data[data.length - 1].last = true
                 res.render(`${process.cwd()}/views/list.ejs`, {
-                    uploads: data.map(row => `<tr><th${row.last ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${row.id}</th><td>${row.visible ? "" : "🔒 "}${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td${row.last ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${row.finished ? "✅" : "❌"}</td></tr>`).join("")
+                    uploads: data.map(row => `<tr><th${row.last ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${row.id}</th><td>${row.visible ? "" : "🔒 "}${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td>${row.tag ?? "None"}</td><td${row.last ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${row.finished ? "✅" : "❌"}</td></tr>`).join("")
                 })
             })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
@@ -228,7 +229,7 @@ app.get("/processing", (req, res) => {
                 let last = -1
                 if (uploadIds.length > 0) last = uploadIds[uploadIds.length - 1]
                 res.render(`${process.cwd()}/views/operations.ejs`, {
-                    operations: uploadIds.map(upload => `<tr><th${last == upload ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${upload}</th><td>${uploads[upload].displayName}</td><td><a href="${process.env.BASE_URL}/clips/${uploads[upload].video}">Link</a></td><td>${uploads[upload].width}x${uploads[upload].height}</td><td${last == upload ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${uploads[upload].progress.toFixed(2)}%</td></tr>`).join("")
+                    operations: uploadIds.map(upload => `<tr><th${last == upload ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${upload}</th><td>${uploads[upload].displayName}</td><td><a href="${process.env.BASE_URL}/clips/${uploads[upload].video}">Link</a></td><td>${uploads[upload].width}x${uploads[upload].height}</td><td>${uploads[upload].tag}</td><td${last == upload ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${uploads[upload].progress.toFixed(2)}%</td></tr>`).join("")
                 })
             })
             .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
@@ -367,6 +368,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
             } else return Promise.all([videoData, { id: -1 } as Config])
         })
         .then(([videoData, configData]) => {
+            if (configData.display_name) thisUpload.tag = configData.display_name
             let video = thisUpload.video
             let videos = videoData.streams.filter(s => s.codec_type == "video")
             if (videos.length <= 0 || !videos[0].width || !videos[0].height) throw new Error(undefined)
@@ -379,7 +381,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 video = video.videoFilter(`crop=${configData.crop_width}:${configData.crop_height}:${(configData.crop_source_width - configData.crop_width) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
-            return db.query("INSERT INTO uploads(file, owner, title, description, width, height) VALUES($1, $2, $3, $4, $5, $6) RETURNING *;", [fileName, owner, thisUpload.displayName, "", thisUpload.width, thisUpload.height])
+            return db.query("INSERT INTO uploads(file, owner, title, description, width, height, tag) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *;", [fileName, owner, thisUpload.displayName, "", thisUpload.width, thisUpload.height, thisUpload.tag])
         })
         .then(data => data.rows)
         .then(async data => {
@@ -462,6 +464,7 @@ app.post("/clips/:clip/edit", (req, res) => {
                 width: upload.width,
                 height: upload.height,
                 video: ffmpeg("processed/" + upload.file),
+                tag: upload.tag
             }
             thisUpload.video.ffprobe((err, metadata) => {
                 if (err) throw new Error(err)
@@ -472,7 +475,7 @@ app.post("/clips/:clip/edit", (req, res) => {
                 }
             })
             res.json({ file: upload.title })
-            return db.query("INSERT INTO uploads(file, owner, title, description, edited, width, height) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id, upload.width, upload.height])
+            return db.query("INSERT INTO uploads(file, owner, title, description, edited, width, height, tag) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;", [fileName + ".mp4", upload.owner, upload.title, upload.description, upload.id, upload.width, upload.height, upload.tag])
         })
         .then(data => data.rows)
         .then(async data => {
