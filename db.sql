@@ -24,3 +24,12 @@ CREATE TABLE alerts (
     upload INTEGER,
     upload_name TEXT
 );
+
+CREATE TABLE configs (
+    id SERIAL PRIMARY KEY NOT NULL,
+    display_name TEXT NOT NULL,
+    owner VARCHAR(20) NOT NULL,
+    crop_width INTEGER,
+    crop_height INTEGER,
+    crop_source_height INTEGER
+);

@@ -44,6 +44,14 @@ interface Upload {
 interface Uploads {
     [key: number]: Upload
 }
+interface Config {
+    id: number,
+    display_name?: string,
+    owner?: string,
+    crop_width?: number,
+    crop_height?: number,
+    crop_source_width?: number
+}
 
 const uploads: Uploads = {}
 
@@ -347,9 +355,18 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 height: NaN,
                 video: ffmpeg(req.file?.path as string)
             }
-            return ffprobe(thisUpload.video)
+            return Promise.all([ffprobe(thisUpload.video), (req.query.config ? db.query("SELECT * FROM configs WHERE id = $1;", [req.query.config]) : null)])
         })
-        .then(videoData => {
+        .then(([videoData, configData]) => {
+            if (configData) {
+                if (configData.rowCount && configData.rowCount > 0) return Promise.all([videoData, configData.rows[0] as Config])
+                else {
+                    res.status(403).json({ message: "Please provide a valid config" })
+                    throw new Error(undefined)
+                }
+            } else return Promise.all([videoData, { id: -1 } as Config])
+        })
+        .then(([videoData, configData]) => {
             let video = thisUpload.video
             let videos = videoData.streams.filter(s => s.codec_type == "video")
             if (videos.length <= 0 || !videos[0].width || !videos[0].height) throw new Error(undefined)
@@ -358,11 +375,8 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 thisUpload.width = videos[0].width
                 thisUpload.height = videos[0].height
             }
-            if (process.env.CROP_ENABLED == "true") {
-                const cropSourceWidth = process.env.CROP_SOURCE_WIDTH || "1920"
-                const cropWidth = process.env.CROP_WIDTH || "1920"
-                const cropHeight = process.env.CROP_HEIGHT || "1080"
-                video = video.videoFilter(`crop=${cropWidth}:${cropHeight}:${(parseInt(cropSourceWidth) - parseInt(cropWidth)) / 2}:0`)
+            if (configData.crop_width && configData.crop_height && configData.crop_source_width) {
+                video = video.videoFilter(`crop=${configData.crop_width}:${configData.crop_height}:${(configData.crop_source_width - configData.crop_width) / 2}:0`)
             }
             res.json({ file: req.file?.originalname })
             return db.query("INSERT INTO uploads(file, owner, title, description, width, height) VALUES($1, $2, $3, $4, $5, $6) RETURNING *;", [fileName, owner, thisUpload.displayName, "", thisUpload.width, thisUpload.height])
