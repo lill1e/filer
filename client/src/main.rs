@@ -1,7 +1,9 @@
+use clap::Parser;
 use cookie::Cookie;
 use serde_derive::Deserialize;
-use std::env;
 use ureq_multipart::MultipartRequest;
+
+static BASE_URL: &'static str = "https://clips.lillie.rs";
 
 #[derive(Debug, Deserialize)]
 struct UploadResult {
@@ -13,21 +15,27 @@ struct UploadError {
     message: String,
 }
 
-fn main() {
-    if let None = env::args().skip(2).next() {
-        println!("Please provide a file to upload");
-        return;
-    }
-    let mut args = env::args().skip(1);
-    match ureq::post("https://clips.lillie.rs/upload")
+#[derive(Parser)]
+struct Args {
+    /// The path to the file you would like to upload
+    #[arg(short, long)]
+    path: String,
+
+    /// The provided token to use this service
+    #[arg(short, long)]
+    token: String,
+}
+
+fn upload(path: String, token: String) -> () {
+    match ureq::post(&format!("{}/upload", BASE_URL))
         .set(
             "Cookie",
-            &Cookie::build(("tk", args.next().unwrap()))
-                .domain("https://clips.lillie.rs")
+            &Cookie::build(("tk", token))
+                .domain(BASE_URL)
                 .build()
                 .to_string(),
         )
-        .send_multipart_file("file", args.next().unwrap())
+        .send_multipart_file("file", path)
     {
         Ok(res) => match res.status() {
             200 => match res.into_json::<UploadResult>() {
@@ -44,4 +52,9 @@ fn main() {
         },
         Err(error) => println!("An error occured with the upload request: {}", error),
     };
+}
+
+fn main() {
+    let args = Args::parse();
+    upload(args.path, args.token);
 }
