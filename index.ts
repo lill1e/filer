@@ -321,7 +321,7 @@ app.get("/auth", (req, res) => {
                 .setExpirationTime("7d")
                 .sign(new TextEncoder().encode(process.env.JWT_SECRET))
         })
-        .then(token => res.status(200).cookie("tk", token, { maxAge: 604800000, httpOnly: true }).json({ token: token }))
+        .then(token => res.status(200).cookie("tk", token, { maxAge: 604800000, httpOnly: true }).redirect("/"))
         .catch(_ => {
             if (!res.headersSent) res.status(503).json({})
         })
