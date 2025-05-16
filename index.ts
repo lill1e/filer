@@ -244,6 +244,15 @@ app.get("/logout", (req, res) => {
     }
 })
 
+app.get("/token", (req, res) => {
+    if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
+    else {
+        jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+            .then(_ => res.send(req.cookies.tk))
+            .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
+    }
+})
+
 app.get("/refresh", (req, res) => {
     if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
     else {
