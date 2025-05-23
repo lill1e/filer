@@ -393,6 +393,8 @@ app.post("/upload", upload.single("file"), (req, res) => {
             }
             if (configData.crop_width && configData.crop_height && configData.crop_source_width) {
                 video = video.videoFilter(`crop=${configData.crop_width}:${configData.crop_height}:${(configData.crop_source_width - configData.crop_width) / 2}:0`)
+                thisUpload.width = configData.crop_width
+                thisUpload.height = configData.crop_height
             }
             res.json({ file: req.file?.originalname })
             return db.query("INSERT INTO uploads(file, owner, title, description, width, height, tag) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *;", [fileName, owner, thisUpload.displayName, "", thisUpload.width, thisUpload.height, thisUpload.tag])
