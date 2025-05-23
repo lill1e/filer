@@ -72,7 +72,7 @@ function getFileName(fileName: string): string | null {
 
 function videoSave(video: FfmpegCommand, upload: Upload): Promise<void> {
     return new Promise((resolve, reject) => {
-        video.save("processed/" + upload.file).on("error", e => {
+        video.outputOption("-movflags +faststart").save("processed/" + upload.file).on("error", e => {
             reject(e)
         }).on("end", _ => {
             upload.progress = 100.00
