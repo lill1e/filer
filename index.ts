@@ -117,23 +117,28 @@ app.get("/thumbnail/:clip", (req, res) => {
 })
 
 app.get("/clips/:clip", (req, res) => {
-    if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
-    else {
-        Promise.all([jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET)), db.query("SELECT uploads.*,users.username FROM uploads uploads JOIN users users ON uploads.owner = users.id WHERE uploads.id = $1", [req.params.clip])])
-            .then(res => [res[0].payload, res[1].rows] as [JWTPayload, any[]])
-            .then(([payload, data]) => {
-                if (data.length > 0 && (data[0].visible || payload.username == data[0].username)) {
-                    if (data[0].finished) res.render(`${process.cwd()}/views/clip.ejs`, {
-                        clipData: data[0]
-                    })
-                    else res.status(403).json({ message: "This video is still processing" })
-                } else throw new Error(undefined)
+    db.query("SELECT uploads.*,users.username FROM uploads uploads JOIN users users ON uploads.owner = users.id WHERE uploads.id = $1", [req.params.clip])
+        .then(data => data.rows)
+        .then(data => {
+            if (data.length > 0 && data[0].visible && data[0].finished)
+                res.render(`${process.cwd()}/views/clip.ejs`, {
+                    clipData: data[0]
+                })
+            else if (data.length == 0) res.status(403).json({ message: "Media not found" })
+            else if (!data[0].finished) res.status(403).json({ message: "Media not found" })
+            else if (req.cookies.tk) return Promise.all([jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET)), data])
+            throw new Error(undefined)
+        })
+        .then(res => [res[0].payload, res[1]] as [JWTPayload, any[]])
+        .then(([payload, data]) => {
+            if (data[0].finished && payload.username == data[0].username) res.render(`${process.cwd()}/views/clip.ejs`, {
+                clipData: data[0]
             })
-            .catch(_ => {
-                if (!res.headersSent) res.status(401).json({ message: "Unauthorized use of this service" })
-            })
-
-    }
+            else res.status(403).json({ message: "This video is still processing" })
+        })
+        .catch(_ => {
+            if (!res.headersSent) res.status(401).json({ message: "Unauthorized use of this service" })
+        })
 })
 
 app.post("/clips/:clip/visibility", (req, res) => {
