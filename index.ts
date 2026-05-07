@@ -4,7 +4,7 @@ import ffmpeg, { FfmpegCommand, FfprobeData } from "fluent-ffmpeg"
 import * as dotenv from "dotenv"
 import { Client } from "pg"
 import { URLSearchParams } from "url"
-import { JWTPayload, jwtVerify, SignJWT } from "jose"
+import { JWTPayload, jwtVerify, JWTVerifyResult, SignJWT } from "jose"
 import cookieParser from "cookie-parser"
 import { randomUUID } from "crypto"
 
@@ -129,7 +129,7 @@ app.get("/clips/:clip", (req, res) => {
             else if (req.cookies.tk) return Promise.all([jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET)), data])
             throw new Error(undefined)
         })
-        .then(res => [res[0].payload, res[1]] as [JWTPayload, any[]])
+        .then(res => [(res[0] as JWTVerifyResult<JWTPayload>).payload, res[1]] as [JWTPayload, any[]])
         .then(([payload, data]) => {
             if (data[0].finished && payload.username == data[0].username) res.render(`${process.cwd()}/views/clip.ejs`, {
                 clipData: data[0]
