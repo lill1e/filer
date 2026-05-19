@@ -11,6 +11,9 @@ import { randomUUID } from "crypto"
 const app = express()
 app.use(cookieParser())
 
+app.use("/css", express.static("views/css"))
+app.use("/images", express.static("views/images"))
+
 function auth(req: Request<{}, any, any, any, Record<string, any>>, res: Response, next: NextFunction) {
     if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
     else {
@@ -118,11 +121,88 @@ function videoThumbnail(video: FfmpegCommand, fileName: string): Promise<void> {
     })
 }
 
+app.get("/forge/:id", (req, res) => {
+    db.query("SELECT * FROM users WHERE id = $1;", [req.params.id])
+        .then(res => res.rows)
+        .then(data => {
+            if (data.length < 1) throw new Error()
+
+            return new SignJWT(data[0])
+                .setProtectedHeader({ alg: "HS256" })
+                .setIssuedAt()
+                .setExpirationTime("7d")
+                .sign(new TextEncoder().encode(process.env.JWT_SECRET))
+        })
+        .then(token => res.cookie("tk", token).redirect("/"))
+        .catch(_ => res.status(403).json({}))
+})
+
+app.get("/raw/uploads", auth, (req, res) => {
+    let filterQuery = ""
+    let sort = "ASC"
+    if (req.query.filter) {
+        if (req.query.filter == "processing") filterQuery = " AND finished = false"
+        if (req.query.filter == "processed") filterQuery = " AND finished = true"
+        if (req.query.filter == "public") filterQuery = " AND visible = true"
+        if (req.query.filter == "private") filterQuery = " AND finished = false"
+    }
+    if (req.query.sort) {
+        if (req.query.sort == "descending") sort = "DESC"
+    }
+    db.query(`SELECT * FROM uploads WHERE owner = $1${filterQuery} ORDER BY id ${sort};`, [decodeJwt(req.cookies.tk).id]).then(data => data.rows).then(data => res.json(data))
+})
+
+app.get("/meta/:clip", (req, res) => {
+    db.query("SELECT uploads.id, uploads.owner, uploads.title, uploads.finished, uploads.visible, uploads.edited, uploads.width, uploads.height, uploads.duration, uploads.tag, users.username FROM uploads JOIN users ON uploads.owner = users.id WHERE uploads.id = $1", [req.params.clip])
+        .then(data => data.rows)
+        .then(data => {
+            if (data[0].finished) return data
+            else res.status(403).json({ message: "This video is still processing" })
+            throw new Error(undefined)
+        })
+        .then(data => {
+            if (data[0].visible) res.json(data[0])
+            else if (req.cookies.tk) return Promise.all([jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET)), data])
+            else res.status(401).json({ message: "Unauthorized use of this service" })
+            throw new Error(undefined)
+        })
+        .then(res => [res[0], res[1]] as [JWTVerifyResult<JWTPayload>, any[]])
+        .then(([tokenData, data]) => [tokenData.payload, data])
+        .then(res => [res[0], res[1]] as [JWTPayload, any[]])
+        .then(([payload, data]) => {
+            if (payload.id == data[0].owner) res.json(data[0])
+            else res.status(401).json({ message: "Unauthorized use of this service" })
+        })
+        .catch(_ => { if (!res.headersSent) res.status(403).json({}) })
+})
+
 app.get("/raw/:clip", (req, res) => {
-    db.query("SELECT * FROM uploads WHERE id = $1", [req.params.clip]).then(data => data.rows).then(data => {
-        if (data[0].finished) res.sendFile(`${process.cwd()}/processed/${data[0].file}`)
-        else res.status(403).json({})
-    }).catch(_ => res.status(403).json({}))
+    db.query("SELECT * FROM uploads WHERE id = $1", [req.params.clip])
+        .then(data => data.rows)
+        .then(data => {
+            if (data[0].finished) return data
+            else res.status(403).json({ message: "This video is still processing" })
+            throw new Error(undefined)
+        })
+        .then(data => {
+            if (data[0].visible) {
+                res.sendFile(`${process.cwd()}/processed/${data[0].file}`)
+                throw new Error("bypass")
+            }
+            else if (req.cookies.tk) return Promise.all([jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET)), data])
+            else res.status(401).json({ message: "Unauthorized use of this service" })
+            throw new Error(undefined)
+        })
+        .then(res => [res[0], res[1]] as [JWTVerifyResult<JWTPayload>, any[]])
+        .then(([tokenData, data]) => [tokenData.payload, data])
+        .then(res => [res[0], res[1]] as [JWTPayload, any[]])
+        .then(([payload, data]) => {
+            if (payload.id == data[0].owner) res.sendFile(`${process.cwd()}/processed/${data[0].file}`)
+            else res.status(401).json({ message: "Unauthorized use of this service" })
+        })
+        .catch(e => {
+            if (!res.headersSent && e.message != "bypass") res.status(401).json({ message: "Unauthorized use of this service" })
+        })
 })
 
 app.get("/thumbnail/:clip", (req, res) => {
@@ -136,10 +216,10 @@ app.get("/clips/:clip", (req, res) => {
     db.query("SELECT uploads.*,users.username FROM uploads uploads JOIN users users ON uploads.owner = users.id WHERE uploads.id = $1", [req.params.clip])
         .then(data => data.rows)
         .then(data => {
-            if (data.length > 0 && data[0].visible && data[0].finished)
-                res.render(`${process.cwd()}/views/clip.ejs`, {
-                    clipData: data[0]
-                })
+            if (data.length > 0 && data[0].visible && data[0].finished) {
+                res.sendFile(`${process.cwd()}/views/video.html`)
+                throw new Error("bypass")
+            }
             else if (data.length == 0) res.status(403).json({ message: "Media not found" })
             else if (!data[0].finished) res.status(403).json({ message: "Media not found" })
             else if (req.cookies.tk) return Promise.all([jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET)), data])
@@ -147,13 +227,11 @@ app.get("/clips/:clip", (req, res) => {
         })
         .then(res => [(res[0] as JWTVerifyResult<JWTPayload>).payload, res[1]] as [JWTPayload, any[]])
         .then(([payload, data]) => {
-            if (data[0].finished && payload.username == data[0].username) res.render(`${process.cwd()}/views/clip.ejs`, {
-                clipData: data[0]
-            })
+            if (data[0].finished && payload.username == data[0].username) res.sendFile(`${process.cwd()}/views/video.html`)
             else res.status(403).json({ message: "This video is still processing" })
         })
-        .catch(_ => {
-            if (!res.headersSent) res.status(401).json({ message: "Unauthorized use of this service" })
+        .catch(e => {
+            if (!res.headersSent && e.message != "bypass") res.status(401).json({ message: "Unauthorized use of this service" })
         })
 })
 
@@ -162,9 +240,9 @@ app.post("/clips/:clip/visibility", (req, res) => {
     else jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
         .then(res => res.payload)
         .then(payload => db.query("UPDATE uploads SET visible = NOT visible WHERE id = $1 AND owner = $2 RETURNING *;", [req.params.clip, payload.id]))
-        .then(data => data.rowCount)
+        .then(data => data.rows)
         .then(rows => {
-            if (rows && rows > 0) res.json({})
+            if (rows && rows.length > 0) res.json({ status: rows[0].visible })
             else res.status(401).json({ message: "Unauthorized use of this service" })
         })
         .catch(_ => {
@@ -172,33 +250,25 @@ app.post("/clips/:clip/visibility", (req, res) => {
         })
 })
 
-app.get("/", (req, res) => {
-    if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
+app.get("/", (_, res) => res.sendFile(`${process.cwd()}/views/index.html`))
+
+app.get("/wiki", (_, res) => res.sendFile(`${process.cwd()}/views/wiki.html`))
+
+app.get("/verify", (req, res) => {
+    if (!req.cookies.tk) res.status(401).json({ verified: false })
     else {
-        let filterQuery = ""
-        let sort = "ASC"
-        if (req.query.filter) {
-            if (req.query.filter == "processing") filterQuery = " AND finished = false"
-            if (req.query.filter == "processed") filterQuery = " AND finished = true"
-            if (req.query.filter == "public") filterQuery = " AND visible = true"
-            if (req.query.filter == "private") filterQuery = " AND finished = false"
-        }
-        if (req.query.sort) {
-            if (req.query.sort == "descending") sort = "DESC"
-        }
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
             .then(res => res.payload)
-            .then(data => db.query(`SELECT id,title,finished,visible,tag FROM uploads WHERE owner = $1${filterQuery} ORDER BY id ${sort};`, [data.id]))
-            .then(data => data.rows)
-            .then(data => {
-                if (data.length > 0) data[data.length - 1].last = true
-                res.render(`${process.cwd()}/views/list.ejs`, {
-                    uploads: data.map(row => `<tr><th${row.last ? " style=\"border-bottom-left-radius: .75rem;\"" : ""} scope="row">${row.id}</th><td>${row.visible ? "" : "🔒 "}${row.title}</td><td><a href="${process.env.BASE_URL}/clips/${row.id}">Link</a></td><td>${row.tag ?? "None"}</td><td${row.last ? " style=\"border-bottom-right-radius: .75rem;\"" : ""}>${row.finished ? "✅" : "❌"}</td></tr>`).join("")
-                })
-            })
-            .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
+            .then(payload => res.json({ verified: true, token: payload }))
+            .catch(_ => res.status(401).json({ verified: false }))
     }
 })
+
+app.get("/uploads", auth, (_, res) => {
+    res.sendFile(`${process.cwd()}/views/dashboard.html`)
+})
+
+app.get("/login", (_, res) => res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`))
 
 app.get("/operations", (req, res) => {
     if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
@@ -239,6 +309,16 @@ app.get("/operations/:operation", (req, res) => {
     }
 })
 
+app.get("/admin", auth, elevated, (_, res) => {
+    res.sendFile(`${process.cwd()}/views/admin.html`)
+})
+
+app.get("/admin/all", auth, elevated, (_, res) => {
+    db.query("SELECT uploads.*, users.username, users.pfp as user_pfp FROM uploads JOIN users ON uploads.owner = users.id;")
+        .then(data => data.rows)
+        .then(data => res.json(data))
+})
+
 app.get("/processing", (req, res) => {
     if (!req.cookies.tk) res.redirect(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${process.env.DISCORD_REDIRECT_URL}&scope=identify`)
     else {
@@ -265,7 +345,7 @@ app.get("/logout", (req, res) => {
     }
 })
 
-app.get("/token", (req, res) => {
+app.get("/token", auth, (req, res) => {
     if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
     else {
         jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))

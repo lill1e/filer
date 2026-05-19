@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>filer</title>
+    <!-- add your own favicon - https://favicon.io/ -->
+    <link rel="shortcut icon" href="/images/logo.svg" type="image/x-icon">
+    <!-- reset default browser stylesheet -->
+    <link rel="stylesheet" href="/css/modern-normalize.css">
+    <!-- add google font and other resources here -->
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=edit,link_2,lock,lock_open,menu" />
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap"
+        rel="stylesheet">
+
+    <!-- custom styles -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <nav>
+        <div class="logo-box dim">
+            <img class="logo" src="/images/logo.svg" alt="logo">
+            <h1>filer</h1>
+        </div>
+        <div class="menu-items">
+            <p class="menu-button dim">
+                <span class="material-symbols-outlined">
+                    menu
+                </span>
+            </p>
+            <ul class="hidden menu">
+                <li><a class="dim" href="/admin">Admin</a></li>
+                <li><a class="dim" href="/uploads">Dashboard</a></li>
+                <li><a class="dim" href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+    <main>
+        <div class="container">
+            <h2>Welcome <span id="username"></span></h2>
+            <h3><span id="uploads-count">0</span> Uploads:</h3>
+            <div class="uploads">
+            </div>
+        </div>
+    </main>
+    <footer>
+        <div class="logo-box">
+            <img class="logo" src="/images/logo.svg" alt="logo">
+        </div>
+        <div class="footer-buttons">
+            <a class="rounded-btn black-white-btn" href="https://github.com/lill1e/filer">Source Code</a>
+            <a class="rounded-btn black-white-btn" href="/wiki">Wiki</a>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelector(".menu-button").addEventListener("click", () => document.querySelector(".menu").classList.toggle("hidden"))
+        document.querySelectorAll(".logo-box").forEach(v => v.addEventListener("click", () => document.location.href = "/"))
+
+        function getTime(seconds) {
+            let secs = seconds % 60
+            let mins = Math.floor(seconds / 60) % 60
+            let hours = Math.floor(seconds / 60 / 60)
+            return `${hours > 0 ? `${hours}:` : ""}${mins > 0 ? `${hours > 0 ? mins.toString().padStart(2, "0") : mins}:` : ""}${(hours == 0 && mins == 0) ? secs : secs.toString().padStart(2, "0")}${(hours == 0 && mins == 0) ? " seconds" : ""}`
+        }
+
+        fetch("/verify").then(res => res.json())
+            .then(res => res.token.username)
+            .then(username => document.getElementById("username").innerText = username)
+
+        fetch("/raw/uploads").then(res => res.json()).then(data => {
+            console.log(data)
+            document.getElementsByClassName("uploads")[0].innerHTML = data.filter(upload => upload.finished).map(upload => [upload.id, upload.title, upload.video, upload.duration, upload.visible, upload.width, upload.height, upload.finished])
+                .map(([id, title, video, time, public, width, height, finished]) => {
+                    return `
+                        <div class="upload">
+                            <img onClick="document.location.href = \`/clips/${id}\`" src="thumbnail/${id}" alt="Video Thumbnail">
+                            <div class="video-text">
+                                <div class="video-details">
+                                    <h3><a class="lock ${public ? "public" : "private"}"><span class="material-symbols-outlined">${public ? "lock_open" : "lock"}</span></a><a class="video-link dim"
+                                            href="/clips/${id}">${title}</a></h3>
+                                    <p>${getTime(time)}</p>
+                                </div>
+                                <div class="upload-buttons">
+                                    <a onClick="navigator.clipboard.writeText(\`${document.location.host}/clips/${id}\`)" class="copy-btn rounded-btn black-white-btn"><span
+                                            class="material-symbols-outlined">link_2</span></a>
+                                    <a class="edit-btn rounded-btn black-white-btn disabled"><span
+                                            class="material-symbols-outlined">edit</span></a>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }).join("\n")
+
+            document.querySelectorAll(".lock").forEach(v => v.addEventListener("click", () => {
+                // TODO: add logic for lock toggling
+                if (v.classList.contains("private")) {
+                    v.firstChild.innerText = "lock_open"
+                } else if (v.classList.contains("public")) {
+                    v.firstChild.innerText = "lock"
+                }
+                v.classList.toggle("private")
+                v.classList.toggle("public")
+            }))
+
+            document.querySelectorAll(".disabled").forEach(v => v.addEventListener("click", () => alert("Feature Disabled")))
+
+            document.getElementById("uploads-count").innerText = data.length
+        })
+    </script>
+</body>
+
+</html>

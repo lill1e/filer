@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>filer</title>
+    <!-- add your own favicon - https://favicon.io/ -->
+    <link rel="shortcut icon" href="/images/logo.svg" type="image/x-icon">
+    <!-- reset default browser stylesheet -->
+    <link rel="stylesheet" href="/css/modern-normalize.css">
+    <!-- add google font and other resources here -->
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=menu" />
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap"
+        rel="stylesheet">
+
+    <!-- custom styles -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <nav>
+        <div class="logo-box dim">
+            <img class="logo" src="/images/logo.svg" alt="logo">
+            <h1>filer</h1>
+        </div>
+        <div class="menu-items">
+            <p class="menu-button dim">
+                <span class="material-symbols-outlined">
+                    menu
+                </span>
+            </p>
+            <ul id="menu-logged-in" class="hidden">
+                <li><a class="dim" href="/admin">Admin</a></li>
+                <li><a class="dim" href="/uploads">Dashboard</a></li>
+                <li><a class="dim" href="/logout">Logout</a></li>
+            </ul>
+            <ul id="menu-logged-out" class="hidden">
+                <li><a class="dim" href="/login">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+    <main>
+        <div class="container">
+            <header>
+                <h2>A Self-hosted Video Sharing Service</h2>
+                <a class="rounded-btn white-black-btn" href="/wiki">Jump In!</a>
+            </header>
+            <div class="infos">
+                <div class="info">
+                    <div class="info-info">
+                        <h1>Free and Open Source</h1>
+                        <p>This project was made to be Open Source and Free to Use. The code for this project is
+                            available in its entirety via <a class="dim link"
+                                href="https://github.com/lill1e/filer">GitHub</a>. Because of this,
+                            <strong>filer</strong> is open for contributions and suggestions at any time!
+                        </p>
+                    </div>
+                    <img src="/images/source.png" alt="Source Code Screenshot">
+                </div>
+                <div class="info">
+                    <div class="info-info">
+                        <h1>Command Line Utility</h1>
+                        <p>Packaged with the server build, is a Command Line Utility written in Rust. This utility gives
+                            complete control over a user's account (given a token) and allows for easier uploading
+                            rather than just using the web view.</p>
+                    </div>
+                    <img src="/images/client.png" alt="CLI Tool Screenshot">
+                </div>
+            </div>
+            <div class="faqs">
+                <h2>Frequently Asked Questions</h2>
+                <div class="faqs-container">
+                    <div class="faq">
+                        <h3>Where do I go from here?</h3>
+                        <p class="hidden">If <strong>filer</strong> interests you in any regard, I recommend you take a
+                            look at the <a class="dim" href="/wiki">Wiki</a>!</p>
+                    </div>
+                </div>
+            </div>
+    </main>
+    <footer>
+        <div class="logo-box dim">
+            <img class="logo" src="/images/logo.svg" alt="logo">
+        </div>
+        <div class="footer-buttons">
+            <a class="rounded-btn black-white-btn" href="https://github.com/lill1e/filer">Source Code</a>
+            <a class="rounded-btn black-white-btn" href="/wiki">Wiki</a>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelector(".menu-button").addEventListener("click", () => document.querySelector(".menu").classList.toggle("hidden"))
+        document.querySelectorAll(".logo-box").forEach(v => v.addEventListener("click", () => document.location.href = "/"))
+        document.querySelectorAll(".disabled").forEach(v => v.addEventListener("click", () => alert("Feature Disabled")))
+        document.querySelectorAll(".faq").forEach(v => v.addEventListener("click", () => v.lastChild.previousSibling.classList.toggle("hidden"))) // what on earth is previousSibling and WHY do i have to do this??
+        fetch("/verify")
+            .then(res => res.json())
+            .then(res => {
+                if (res.verified) document.getElementById("menu-logged-in").classList.toggle("menu")
+                else document.getElementById("menu-logged-out").classList.toggle("menu")
+            })
+    </script>
+</body>
+
+</html>

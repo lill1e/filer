@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>filer | Wiki</title>
+    <!-- add your own favicon - https://favicon.io/ -->
+    <link rel="shortcut icon" href="/images/logo.svg" type="image/x-icon">
+    <!-- reset default browser stylesheet -->
+    <link rel="stylesheet" href="/css/modern-normalize.css">
+    <!-- add google font and other resources here -->
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=menu" />
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap"
+        rel="stylesheet">
+
+    <!-- custom styles -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <nav>
+        <div class="logo-box dim">
+            <img class="logo" src="/images/logo.svg" alt="logo">
+            <h1>filer</h1>
+        </div>
+        <div class="menu-items">
+            <p class="menu-button dim">
+                <span class="material-symbols-outlined">
+                    menu
+                </span>
+            </p>
+            <ul id="menu-logged-in" class="hidden">
+                <li><a class="dim" href="/admin">Admin</a></li>
+                <li><a class="dim" href="/uploads">Dashboard</a></li>
+                <li><a class="dim" href="/logout">Logout</a></li>
+            </ul>
+            <ul id="menu-logged-out" class="hidden">
+                <li><a class="dim" href="/login">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+    <main>
+        <div class="container">
+            <h2>Wiki &amp; Other Information</h2>
+            <article>
+                <p>Welcome to <strong>filer</strong>, an Open Source and Free media sharing service.</p>
+                <p>Because this is a small scale project ran by a single individual, there is quite a bit that goes into
+                    using this software. With that being said, I felt it would be of importance to highlight various
+                    features as well as outline instructions for using <strong>filer</strong>.</p>
+            </article>
+            <section>
+                <h3>Self-hosting</h3>
+                <p>Because <strong>filer</strong> is complete Open Source, users are recommended to self-host this
+                    service if they want. However it isn't necesarily straightforward and takes a level of technology
+                    literacy to get working, please read the following if that interests you:</p>
+                <h4>Required Software</h4>
+                <ul class="installation-instructions">
+                    <li><a class="dim" href="https://git-scm.org">Git</a></li>
+                    <li><a class="dim" href="https://nodejs.org">NodeJS</a></li>
+                    <li><a class="dim" href="https://ffmpeg.org">ffmpeg</a></li>
+                    <li><a class="dim" href="https://postgresql.org/">PostgreSQL</a></li>
+                    <li><a class="dim" href="https://typescriptlang.org">TypeScript</a></li>
+                </ul>
+                <h4>Instructions</h4>
+                <ol class="installation-instructions code-content">
+                    <li>Clone the project by running <code>git clone https://github.com/lill1e/filer.git</code></li>
+                    <li>Change directories by running <code>cd filer</code></li>
+                    <li>Install the node packages by running <code>npm install</code></li>
+                    <li>Open PostgreSQL by running <code>psql</code></li>
+                    <li>Setup the Database by running <code>\i db.sql</code></li>
+                    <li>Exit psql by running <code>exit</code></li>
+                    <li>Run <strong>filer</strong> by running <code>npm run test</code></li>
+                </ol>
+            </section>
+            <section>
+                <h3>Command Line Utility (filer-client)</h3>
+                <p>While the service contains quite a few features via endpoints, it can admittedly be tedious to use.
+                    To adjust to that issue, there is a client available in the repository for ease of use. The client
+                    requires that a token be passed via the <code>--token</code> flag. With the client you can use the
+                    <code>--path</code> flag to provide a video to upload, completely avoiding the need of knowing the
+                    specifics of the upload schema.
+                </p>
+            </section>
+            <section>
+                <h3>Server Endpoints</h3>
+                <p><strong>filer</strong> opens up various endpoints that can be used for interaction with this service
+                    (some more useful than others). Below is a list of each endpoint with a description of what they do.
+                </p>
+                <ul class="code-content">
+                    <li>GET <code>/</code> &mdash; The root directory, shows the home page</li>
+                    <li>POST <code>/auth</code> &mdash; Given a valid auth code, this creates a new session for the
+                        corresponding users</li>
+                    <li>GET <code>/token</code> &mdash; Returns the user's token in a raw string</li>
+                    <li>GET <code>/refresh</code> &mdash; Refreshes the current session token and updates the cookies
+                    </li>
+                    <li>GET <code>/logout</code> &mdash; Ends the current session, clears current cookies</li>
+                    <li>POST <code>/upload</code> &mdash; Uploads a given video, given a correct payload</li>
+                    <li>GET <code>/clips/:clip</code> &mdash; Shows a specific upload in a user friendly format</li>
+                    <li>GET <code>/raw/:clip</code> &mdash; Displays the raw video file of a requested video</li>
+                    <li>GET <code>/thumbnail/:clip</code> &mdash; Displays the thumbnail of a requested video</li>
+                    <li>POST <code>/clips/:clip/edit</code> &mdash; Reuploads a video with specific flags passed to
+                        modify the video (e.g. cropping or trimming)</li>
+                    <li>POST <code>/clips/:clip/visibility</code> &mdash; Toggles the visibility of an upload</li>
+                    <li>GET <code>/operations</code> &mdash; Displays the operations in JSON format</li>
+                    <li>GET <code>/operations/:operation</code> &mdash; Displays data about a sepcific operation in JSON
+                        format</li>
+                    <li>GET <code>/admin</code> &mdash; Displays the current processing uploads in a user-friendly
+                        table</li>
+
+                </ul>
+            </section>
+            <section>
+                <h3>.env Spec</h3>
+                <p><strong>filer</strong> uses a <code>.env</code> file to pass sensitive data to the server at runtime.
+                    These fields are required for <strong>filer</strong> to operate and are below for use of
+                    constructing the configuration file.</p>
+                <ul class="code-content">
+                    <li><code>PORT</code> (e.g. 3000)</li>
+                    <li><code>DATABASE_HOST</code> (e.g. localhost)</li>
+                    <li><code>DATABASE_PORT</code> (e.g. 5432)</li>
+                    <li><code>DATABASE_USER</code> (e.g. postgres)</li>
+                    <li><code>DATABASE_PASSWORD</code> (e.g. password)</li>
+                    <li><code>DATABASE_NAME</code> (e.g. filer)</li>
+                    <li><code>DATABASE_CLIENT_ID</code> (Application ID from Discord Developer Portal)</li>
+                    <li><code>DATABASE_CLIENT_SECRET</code> (Client Secret from Discord Developer Portal)</li>
+                    <li><code>DATABASE_REDIRECT_URL</code> (e.g. http://localhost:3000/auth)</li>
+                    <li><code>BASE_URL</code> (e.g. http://localhost:3000)</li>
+                    <li><code>JWT_SECRET</code> (Some string used for encrypting Session Tokens)</li>
+                    <li><code>DISCORD_WEBHOOK</code> (Discord Webhook URL to log uploads to)</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+    <footer>
+        <div class="logo-box">
+            <img class="logo" src="/images/logo.svg" alt="logo">
+        </div>
+        <div class="footer-buttons">
+            <a class="rounded-btn black-white-btn" href="https://github.com/lill1e/filer">Source Code</a>
+            <a class="rounded-btn black-white-btn" href="/wiki">Wiki</a>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelector(".menu-button").addEventListener("click", () => document.querySelector(".menu").classList.toggle("hidden"))
+        document.querySelectorAll(".logo-box").forEach(v => v.addEventListener("click", () => document.location.href = "/"))
+        document.querySelectorAll(".disabled").forEach(v => v.addEventListener("click", () => alert("Feature Disabled")))
+
+        fetch("/verify")
+            .then(res => res.json())
+            .then(res => {
+                if (res.verified) document.getElementById("menu-logged-in").classList.toggle("menu")
+                else document.getElementById("menu-logged-out").classList.toggle("menu")
+            })
+    </script>
+</body>
+
+</html>

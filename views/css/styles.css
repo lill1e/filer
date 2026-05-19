@@ -1,0 +1,585 @@
+/* USE FOR CUSTOM STYLE AND LAYOUT: */
+/* Add or adjust banners for organization */
+/* modern-normalize is taking care of the box-sizing,
+   which is still a standard way to design */
+
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+    UTILITIES 
+* * * * * * * * * * * * * * * * * * * * * * * * */
+/* Screen Reader Only */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+img {
+    display: block;
+    max-inline-size: 100%;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+    TYPOGRAPHY 
+    For larger projects, consider using a type scale:
+    https://baseline.is/tools/type-scale-generator/
+* * * * * * * * * * * * * * * * * * * * * * * * */
+
+* {
+    font-family: "Urbanist", sans-serif;
+}
+
+p,
+li {
+    line-height: 1.75rem;
+}
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+    STRUCTURE
+* * * * * * * * * * * * * * * * * * * * * * * * */
+body {
+    margin: 0 auto;
+    max-width: 1000px;
+
+}
+
+nav {
+    /* background-color: rgb(255, 254, 215); */
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    border-bottom: 2px solid rgb(63, 113, 35);
+}
+
+.menu-button {
+    cursor: pointer;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    margin: 1rem;
+    position: absolute;
+    transition: 0.2s;
+}
+
+.menu-button span {
+    font-size: 32px;
+}
+
+.logo-box {
+    align-self: stretch;
+    align-self: center;
+    margin: 1rem;
+    display: flex;
+    height: 5rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.logo-box h1 {
+    display: none;
+    margin-left: 1rem;
+}
+
+@media (width >=576px) {
+    .logo-box h1 {
+        display: block;
+    }
+}
+
+.menu-items {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.menu {
+    display: flex;
+    flex-direction: row;
+    /* justify-content: flex-end; */
+    align-items: flex-end;
+    padding-right: 1rem;
+    gap: 1rem;
+    margin-top: 4rem;
+}
+
+.menu.hidden {
+    display: none;
+}
+
+@media (width >=576px) {
+    .menu-button {
+        display: none;
+    }
+
+    .menu.hidden {
+        display: flex;
+    }
+}
+
+.menu li {
+    list-style-type: none;
+}
+
+.menu li a {
+    text-decoration: none;
+    color: black;
+    font-size: 18px;
+}
+
+.container {
+    padding: 1.5rem 1.5rem;
+}
+
+footer {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-top: 2px solid rgb(63, 113, 35);
+    align-items: center;
+    gap: 1rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+footer .logo-box {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.footer-buttons {
+    gap: 0.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.footer-buttons a {
+    display: block;
+    text-align: center;
+}
+
+@media (width >=576px) {
+    .footer-buttons {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        width: 100%;
+        gap: 2rem;
+        margin-right: 1rem;
+    }
+
+    footer {
+        flex-direction: row;
+    }
+}
+
+footer a {
+    flex-grow: 0;
+    text-decoration: none;
+    font-size: 18px;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+    COMPONENTS
+* * * * * * * * * * * * * * * * * * * * * * * * */
+
+/* 
+    IMAGES
+*/
+
+/* 
+    LINKS
+*/
+.dim {
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.dim:hover {
+    color: gray;
+}
+
+/* 
+    BUTTONS
+*/
+.rounded-btn {
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.white-black-btn {
+    border: 2px solid black;
+    color: black;
+    transition: 0.2s;
+}
+
+.white-black-btn:hover {
+    color: white;
+    background-color: black;
+}
+
+.black-white-btn {
+    border: 2px solid black;
+    color: white;
+    background-color: black;
+    transition: 0.2s;
+}
+
+.black-white-btn:hover {
+    color: black;
+    background-color: white;
+}
+
+/* 
+    TABLES
+*/
+
+/*
+    VIDEOS
+*/
+video {
+    max-width: 800px;
+    width: 100%;
+    border-radius: 0.5rem;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+    PAGE SPECIFIC
+* * * * * * * * * * * * * * * * * * * * * * * * */
+
+/** Home Page **/
+header {
+    background: radial-gradient(circle, rgba(238, 174, 202, 1) 0%, rgba(148, 187, 233, 1) 100%);
+    height: 10rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 1rem;
+}
+
+header h2 {
+    margin-top: 0;
+    text-align: center;
+}
+
+header a {
+    text-decoration: none;
+    font-size: 18px;
+}
+
+.infos {
+    margin: 1.5rem 0;
+    margin-bottom: 0;
+}
+
+.info h1 {
+    margin-bottom: 0.5rem;
+}
+
+.info p {
+    margin-top: 0;
+    font-size: 20px;
+}
+
+@media (width >=576px) {
+    .info {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .info:nth-child(even) {
+        flex-direction: row-reverse;
+    }
+
+    .info img {
+        width: 50%;
+        flex-shrink: 0;
+    }
+}
+
+.info:first-child {
+    margin-top: 0;
+}
+
+.info:last-child {
+    margin-bottom: 0;
+}
+
+.info {
+    margin: 1.5rem 0;
+}
+
+.info img {
+    border-radius: 0.5rem;
+}
+
+.faqs h2 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.faqs-container {
+    border-radius: 1rem;
+    border: 2px solid gray;
+}
+
+.faq:first-child {
+    border-top-left-radius: 0.9rem;
+    border-top-right-radius: 0.9rem;
+}
+
+.faq:last-child {
+    border-bottom-left-radius: 0.9rem;
+    border-bottom-right-radius: 0.9rem;
+}
+
+.faq {
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: 0.5s;
+}
+
+.faq:hover {
+    background-color: lightgray;
+}
+
+.faq h3 {
+    margin: 1rem;
+}
+
+.faq p {
+    margin-top: 0;
+    margin-left: 1rem;
+    margin-right: 1rem;
+}
+
+.faq a {
+    color: black;
+    text-decoration: none;
+    transition: 0.2s;
+    font-weight: bold;
+}
+
+.info-info a {
+    color: black;
+    text-decoration: none;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+/** Video Page **/
+.video-title {
+    margin-bottom: 0.75rem;
+}
+
+.video-uploader {
+    margin-top: 0;
+    font-size: 18px;
+    margin-bottom: 0;
+}
+
+.video-uploader-link {
+    text-decoration: none;
+    color: black;
+}
+
+.video-uploader-link:hover {
+    color: gray;
+    transition: 0.3s;
+}
+
+/** Wiki Page **/
+.installation-instructions li {
+    margin: 0.25rem 0;
+}
+
+.installation-instructions li::marker {
+    /* credits: https://stackoverflow.com/questions/21369843/is-there-a-way-to-make-numbers-in-an-ordered-list-bold */
+    font-weight: bold;
+}
+
+.installation-instructions a {
+    color: black;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.code-content li {
+    margin: 0.75rem 0;
+}
+
+code {
+    background-color: rgb(64, 113, 35);
+    color: white;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+}
+
+section>h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+section>p {
+    margin-top: 0;
+}
+
+/** Dashboard Page **/
+.upload {
+    display: flex;
+    flex-direction: column;
+    margin: 1rem 0;
+}
+
+.upload img {
+    border-radius: 0.5rem;
+    margin: 0.5rem;
+    cursor: pointer;
+}
+
+.video-details {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.video-details h3 {
+    margin-bottom: 0;
+}
+
+.video-details p {
+    margin-top: 0.25rem;
+}
+
+.upload h3 {
+    text-overflow: ellipsis;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.video-link {
+    text-decoration: none;
+    color: black;
+}
+
+.video-text {
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+}
+
+
+@media (width >=700px) {
+    .upload {
+        flex-direction: row;
+    }
+
+    .upload img {
+        max-width: 128px;
+    }
+
+    .video-text {
+        flex-direction: row;
+    }
+}
+
+.lock {
+    text-decoration: none;
+    color: black;
+    margin-right: 0.25rem;
+    cursor: pointer;
+    user-select: none;
+    transition: 0.2s;
+}
+
+.lock:hover {
+    color: gray;
+}
+
+.upload-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-grow: 0;
+}
+
+.upload-buttons a {
+    padding: 0.75rem;
+    font-size: 12px;
+    margin: 0.5rem;
+}
+
+.edit-btn,
+.copy-btn,
+.delete-btn {
+    flex-grow: 0;
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
+    user-select: none;
+}
+
+/** Admin Page **/
+.users {
+    margin-bottom: 2rem;
+}
+
+.user {
+    display: flex;
+
+}
+
+.user img {
+    max-height: 96px;
+    border-radius: 45rem;
+    margin: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 0.75rem;
+}
+
+.user-details h3 {
+    margin-bottom: 0;
+}
+
+.user-details p {
+    margin-top: 0.25rem;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+    MEDIA QUERIES 
+* * * * * * * * * * * * * * * * * * * * * * * * */
+
+/* X-Small devices (portrait phones, less than 576px) */
+/* No media query for `xs` since this is the default */
+
+/* Small devices (landscape phones, 576px and up) */
+@media (width >=576px) {}
+
+/* Medium devices (tablets, 768px and up) */
+@media (width >=768px) {}
+
+/* Large devices (desktops, 992px and up) */
+@media (width >=992px) {}
+
+/* X-Large devices (large desktops, 1200px and up) */
+@media (width >=1200px) {}
+
+/* XX-Large devices (larger desktops, 1400px and up) */
+@media (width >=1400px) {}
+
+/** Last Loaded **/
+.hidden {
+    display: none;
+}
