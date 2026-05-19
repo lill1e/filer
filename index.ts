@@ -1,15 +1,31 @@
-import express from "express"
+import express, { NextFunction, Request, Response } from "express"
 import multer from "multer"
 import ffmpeg, { FfmpegCommand, FfprobeData } from "fluent-ffmpeg"
 import * as dotenv from "dotenv"
 import { Client } from "pg"
 import { URLSearchParams } from "url"
-import { JWTPayload, jwtVerify, JWTVerifyResult, SignJWT } from "jose"
+import { decodeJwt, JWTPayload, jwtVerify, JWTVerifyResult, SignJWT } from "jose"
 import cookieParser from "cookie-parser"
 import { randomUUID } from "crypto"
 
 const app = express()
 app.use(cookieParser())
+
+function auth(req: Request<{}, any, any, any, Record<string, any>>, res: Response, next: NextFunction) {
+    if (!req.cookies.tk) res.status(401).json({ message: "Unauthorized use of this service" })
+    else {
+        jwtVerify(req.cookies.tk, new TextEncoder().encode(process.env.JWT_SECRET))
+            .then(res => res.payload)
+            .then(_ => next())
+            .catch(_ => res.status(401).json({ message: "Unauthorized use of this service" }))
+    }
+}
+
+function elevated(req: Request<{}, any, any, any, Record<string, any>>, res: Response, next: NextFunction) {
+    if (decodeJwt(req.cookies.tk).elevated) next()
+    else res.status(401).json({ message: "Unauthorized use of this service" })
+}
+
 app.set("view engine", "ejs")
 dotenv.config()
 const upload = multer({
