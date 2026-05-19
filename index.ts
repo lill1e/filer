@@ -413,7 +413,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
                 thisUpload.height = configData.crop_height
             }
             res.json({ file: req.file?.originalname })
-            return db.query("INSERT INTO uploads(file, owner, title, description, width, height, tag) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *;", [fileName, owner, thisUpload.displayName, "", thisUpload.width, thisUpload.height, thisUpload.tag])
+            return db.query("INSERT INTO uploads(file, owner, title, description, width, height, duration, tag) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;", [fileName, owner, thisUpload.displayName, "", thisUpload.width, thisUpload.height, Math.floor(thisUpload.duration), thisUpload.tag])
         })
         .then(data => data.rows)
         .then(async data => {
